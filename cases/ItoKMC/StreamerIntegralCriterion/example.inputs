@@ -8,9 +8,9 @@ StreamerIntegralCriterion.basename  = pout
 # AmrMesh class options
 # ====================================================================================================
 AmrMesh.lo_corner        = -6E-2 0  -6E-2    ## Low corner of problem domain
-AmrMesh.hi_corner        =  6E-2 30E-2  6E-2 ## High corner of problem domain
+AmrMesh.hi_corner        =  6E-2 30E-3  6E-2 ## High corner of problem domain
 AmrMesh.verbosity        = -1                ## Controls verbosity. 
-AmrMesh.coarsest_domain  = 64 160 64      ## Number of cells on coarsest domain
+AmrMesh.coarsest_domain  = 64 16 64      ## Number of cells on coarsest domain
 AmrMesh.max_amr_depth    = 0                 ## Maximum amr depth
 AmrMesh.max_sim_depth    = -1                ## Maximum simulation depth
 AmrMesh.fill_ratio       = 1.0               ## Fill ratio for grid generation
