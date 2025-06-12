@@ -61,6 +61,20 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::postRegrid() noexcept
 
 template <typename I, typename C, typename R, typename F>
 void
+ItoKMCBackgroundEvaluator<I, C, R, F>::postCheckpoint() noexcept
+{
+  CH_TIME("ItoKMCBackgroundEvaluator::postCheckpoint");
+  if (this->m_verbosity > 5) {
+    pout() << "ItoKMCBackgroundEvaluator::postCheckpoint" << endl;
+  }
+
+  ItoKMCGodunovStepper<I, C, R, F>::postCheckpoint();
+
+  this->computeBackgroundField();
+}
+
+template <typename I, typename C, typename R, typename F>
+void
 ItoKMCBackgroundEvaluator<I, C, R, F>::printStepReport() noexcept
 {
   CH_TIME("ItoKMCBackgroundEvaluator::printStepReport");
