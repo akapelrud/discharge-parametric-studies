@@ -61,14 +61,14 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::postRegrid() noexcept
 
 template <typename I, typename C, typename R, typename F>
 void
-ItoKMCBackgroundEvaluator<I, C, R, F>::postCheckpoint() noexcept
+ItoKMCBackgroundEvaluator<I, C, R, F>::postCheckpointSetup() noexcept
 {
-  CH_TIME("ItoKMCBackgroundEvaluator::postCheckpoint");
+  CH_TIME("ItoKMCBackgroundEvaluator::postCheckpointSetup");
   if (this->m_verbosity > 5) {
-    pout() << "ItoKMCBackgroundEvaluator::postCheckpoint" << endl;
+    pout() << "ItoKMCBackgroundEvaluator::postCheckpointSetup" << endl;
   }
 
-  ItoKMCGodunovStepper<I, C, R, F>::postCheckpoint();
+  ItoKMCGodunovStepper<I, C, R, F>::postCheckpointSetup();
 
   this->computeBackgroundField();
 }
@@ -123,6 +123,12 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::computeBackgroundField() noexcept
   // Reset the field solver permittivities. Note that this discards the semi-implicit coefficients for the field update,
   // but these are refilled on the next solver time step anyways.
   (this->m_fieldSolver)->setPermittivities();
+
+  const MFAMRCellData& permCell = (this->m_fieldSolver)->getPermittivityCell();
+  const MFAMRFluxData& permFace = (this->m_fieldSolver)->getPermittivityFace();
+  const MFAMRIVData&   permEB   = (this->m_fieldSolver)->getPermittivityEB();
+
+  (this->m_fieldSolver)->setSolverPermittivities(permCell, permFace, permEB);
 
   // Solve the damn thing, and then compute the electric field onto m_backgroundField.
   (this->m_fieldSolver)->solve(phi, rho, sigma, false);

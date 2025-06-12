@@ -48,7 +48,7 @@ namespace Physics {
 	@brief Post-checkpoint operations. Computes the background field.
       */
       virtual void
-      postCheckpoint() noexcept override final;      
+      postCheckpointSetup() noexcept override final;      
 
       /*!
 	@brief Print a new step report. This is the old one plus the maximum field change.
