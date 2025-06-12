@@ -8,7 +8,7 @@
 #include <CD_McPhoto.H>
 #include <CD_ItoKMCJSON.H>
 #include <CD_Vessel.H>
-#include <CD_ItoKMCGodunovStepper.H>
+#include <CD_ItoKMCBackgroundEvaluator.H>
 #include <CD_ItoKMCStreamerTagger.H>
 #include "ParmParse.H"
 
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
   auto amr         = RefCountedPtr<AmrMesh> (new AmrMesh());
   auto geocoarsen  = RefCountedPtr<GeoCoarsener> (new GeoCoarsener());
   auto physics     = RefCountedPtr<ItoKMCPhysics> (new ItoKMCJSON());
-  auto timestepper = RefCountedPtr<ItoKMCStepper<>> (new ItoKMCGodunovStepper<>(physics));
+  auto timestepper = RefCountedPtr<ItoKMCStepper<>> (new ItoKMCBackgroundEvaluator<>(physics));
   auto tagger      = RefCountedPtr<CellTagger> (new ItoKMCStreamerTagger<ItoKMCStepper<>>(physics, timestepper, amr));
 
   // Set potential 

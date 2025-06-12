@@ -124,9 +124,9 @@ FieldSolverMultigrid.gmg_exit_tol      = 1.E-10            # Residue tolerance
 FieldSolverMultigrid.gmg_exit_hang     = 0.2               # Solver hang
 FieldSolverMultigrid.gmg_min_cells     = 16                # Bottom drop
 FieldSolverMultigrid.gmg_drop_order    = 0                 # Drop stencil order to 1 if domain is coarser than this.
-FieldSolverMultigrid.gmg_bc_order      = 1                 # Boundary condition order for multigrid
+FieldSolverMultigrid.gmg_bc_order      = 2                 # Boundary condition order for multigrid
 FieldSolverMultigrid.gmg_bc_weight     = 1                 # Boundary condition weights (for least squares)
-FieldSolverMultigrid.gmg_jump_order    = 1                 # Boundary condition order for jump conditions
+FieldSolverMultigrid.gmg_jump_order    = 2                 # Boundary condition order for jump conditions
 FieldSolverMultigrid.gmg_jump_weight   = 1                 # Boundary condition weight for jump conditions (for least squares)
 FieldSolverMultigrid.gmg_bottom_solver = bicgstab          # Bottom solver type. 'simple', 'bicgstab', or 'gmres'
 FieldSolverMultigrid.gmg_cycle         = vcycle            # Cycle type. Only 'vcycle' supported for now. 
@@ -137,7 +137,7 @@ FieldSolverMultigrid.gmg_smoother      = red_black         # Relaxation type. 'j
 # ItoSolver class options
 # ====================================================================================================
 ItoSolver.verbosity           = -1              ## Class verbosity
-ItoSolver.merge_algorithm     = equal_weight_kd ## Particle merging algorithm. Either 'reinitialize' or 'equal_weight_kd'
+ItoSolver.merge_algorithm     = reinitialize_cell ## Particle merging algorithm. Either 'reinitialize' or 'equal_weight_kd'
 ItoSolver.plt_vars            = phi vel dco     ## 'phi', 'vel', 'dco', 'part', 'eb_part', 'dom_part', 'src_part', 'energy_density', 'energy'
 ItoSolver.intersection_alg    = bisection       ## Intersection algorithm for EB-particle intersections.
 ItoSolver.bisect_step         = 1.E-4           ## Bisection step length for intersection tests
@@ -268,13 +268,13 @@ ItoKMCGodunovStepper.algorithm                             = euler_maruyama     
 # ====================================================================================================
 ItoKMCJSON.verbose            = false           ## Turn on/off verbosity
 ItoKMCJSON.debug              = false           ## Turn on/off debugging
-ItoKMCJSON.chemistry_file     = simple_air_chemistry.json  ## Chemistry file. Must be supplied by the user. 
+ItoKMCJSON.chemistry_file     = chemistry.json  ## Chemistry file. Must be supplied by the user. 
 
 # Kinetic Monte Carlo solver settings. 
 ItoKMCJSON.max_new_particles  = 32              ## Maximum number of computational particles to produce in reaction step
 ItoKMCJSON.max_new_photons    = 32              ## Maximum number of computational photons to produce in reaction step	
 ItoKMCJSON.crit_num           = 5               ## How many firings away from a Negative particle number?
-ItoKMCJSON.prop_eps           = 5.0             ## Maximum relative change in propensity function
+ItoKMCJSON.prop_eps           = 1.0             ## Maximum relative change in propensity function
 ItoKMCJSON.SSA_num            = 5               ## How many SSA steps to run when tau-leaping is inefficient
 ItoKMCJSON.SSA_lim            = 5.0             ## When to enter SSA instead of tau-leaping
 ItoKMCJSON.max_iter           = 50              ## Maximum number of iterations for implicit algorithms
@@ -290,11 +290,11 @@ ItoKMCStreamerTagger.plot              = false        # Turn on/off plotting of 
 ItoKMCStreamerTagger.num_tag_boxes     = 0            # Number of allowed tag boxes (0 = tags allowe everywhere)
 ItoKMCStreamerTagger.tag_box1_lo       = 0.0 0.0 0.0  # Only allow tags that fall between
 ItoKMCStreamerTagger.tag_box1_hi       = 0.0 0.0 0.0  # these two corners
-ItoKMCStreamerTagger.buffer            = 0            # Grow tagged cells
+ItoKMCStreamerTagger.buffer            = 8            # Grow tagged cells
 
-ItoKMCStreamerTagger.refine_curvature  = 10.0         # Curvature refinement
-ItoKMCStreamerTagger.coarsen_curvature = 10.0         # Curvature coarsening	
-ItoKMCStreamerTagger.refine_alpha      = 2.0          # Set alpha refinement. Lower  => More mesh
+ItoKMCStreamerTagger.refine_curvature  = 1.E99        # Refinement criteria on field
+ItoKMCStreamerTagger.coarsen_curvature = 1.E99        # Coarsening criteria on field
+ItoKMCStreamerTagger.refine_alpha      = 1.0          # Set alpha refinement. Lower  => More mesh
 ItoKMCStreamerTagger.coarsen_alpha     = 0.1          # Set alpha coarsening. Higher => Less mesh
-ItoKMCStreamerTagger.max_coarsen_lvl   = 0            # Set max coarsening depth
+ItoKMCStreamerTagger.max_coarsen_lvl   = 4            # Set max coarsening depth
 
