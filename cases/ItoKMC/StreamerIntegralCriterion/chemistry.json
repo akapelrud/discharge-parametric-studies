@@ -205,8 +205,7 @@
 	    "max E/N" : 1000.0,                  
 	    "num points" : 10000,                 
 	    "spacing" : "exponential",           
-	    "scale rate/N": 1.0E-6,
-	    "dump": "3d.txt"
+	    "scale rate/N": 1.0E-6
 	},	
 	{
 	    "reaction": "e + N2 -> e + Y + (N2)",    
@@ -229,5 +228,20 @@
 	{
 	    "reaction": "Y + (O2) -> e + O2+"
 	}
+    ],
+    "electrode emission":
+    [
+	{
+	    "reaction": "N2+ -> @",
+	    "@": ["e", "(null)"],
+	    "efficiencies": [1E-3, 0.999]
+	},
+	{
+	    "reaction": "O2+ -> @",
+	    "@": ["e", "(null)"],
+	    "efficiencies": [1E-3, 0.999]
+	}	
     ]
+
+	
 }
