@@ -49,7 +49,7 @@
 	    "diffusive" : true, 
 	    "mobility" : {
 		"type" : "table vs E/N",                     
-		"file" : "transport_data.dat",                   
+		"file" : "electron_transport_data.dat",                   
 		"header" : "E/N (Td)\tMobility *N (1/m/V/s)",
 		"E/N column" : 0,        
 		"mu*N column" : 1,       
@@ -60,7 +60,7 @@
 	    },
 	    "diffusion" : {
 		"type" : "table vs E/N",
-		"file" : "transport_data.dat",
+		"file" : "electron_transport_data.dat",
 		"header" : "E/N (Td)\tDiffusion coefficient *N (1/m/s)",
 		"E/N column" : 0,
 		"D*N column" : 1,
@@ -71,7 +71,7 @@
 	    },
 	    "temperature": {
 		"type": "table vs E/N",
-		"file": "transport_data.dat",
+		"file": "electron_transport_data.dat",
 		"header" : "E/N (Td)\tMean energy (eV)",
 		"E/N column" : 0,
 		"eV column" : 1,
@@ -125,19 +125,27 @@
 		"value": 5E-6
 	    }		
 	},
-	{
-            "id": "O-",             
-	    "Z" : -1,               
-	    "solver" : "ito",       
-	    "mobile" : false,       
-	    "diffusive" : false
-	},		
+	// {
+        //     "id": "O-",             
+	//     "Z" : -1,               
+	//     "solver" : "ito",       
+	//     "mobile" : false,       
+	//     "diffusive" : false
+	// },		
 	{
             "id": "O2-",        
 	    "Z" : -1,           
-	    "solver" : "ito",   
-	    "mobile" : false,   
-	    "diffusive" : false
+	    "solver" : "ito",
+	    "mobile" : true,        
+	    "diffusive" : true,     
+	    "mobility": {           
+		"type": "constant", 
+		"value": 2E-4       
+	    },
+	    "diffusion": {          
+		"type": "constant", 
+		"value": 5E-6
+	    }
 	}
     ],
     "photon species":
@@ -158,7 +166,7 @@
 	    "reaction": "e + N2 -> e + e + N2+",             
 	    "description": "N2 ionization",             
 	    "type": "table vs E/N",                          
-	    "file" : "transport_data.dat",                       
+	    "file" : "electron_transport_data.dat",                       
 	    "header" : "C25   N2    Ionization    15.60 eV", 
 	    "E/N column" : 0,                                
 	    "rate/N column" : 1,                             
@@ -171,7 +179,7 @@
 	    "reaction": "e + O2 -> e + e + O2+",             
 	    "description": "O2 ionization",
 	    "type": "table vs E/N",                          
-	    "file" : "transport_data.dat",                       
+	    "file" : "electron_transport_data.dat",                       
 	    "header" : "C42   O2    Ionization    12.06 eV", 
 	    "E/N column" : 0,                                
 	    "rate/N column" : 1,                             
@@ -181,10 +189,11 @@
 	    "spacing" : "exponential"                       
 	},
 	{
+	    // Note: Strictly speaking this attaches into O-, but O- converts to O2-
 	    "reaction": "e + O2 -> O2-",         
 	    "description": "Dissociative attachment",
 	    "type": "table vs E/N",              
-	    "file" : "transport_data.dat",           
+	    "file" : "electron_transport_data.dat",           
 	    "header" : "C27   O2    Attachment", 
 	    "E/N column" : 0,                    
 	    "rate/N column" : 1,                 
@@ -197,7 +206,7 @@
 	    "reaction": "e + O2 + O2 -> O2- + O2", 
 	    "description": "Three-body attachment",
 	    "type": "table vs E/N",              
-	    "file" : "transport_data.dat",       
+	    "file" : "electron_transport_data.dat",       
 	    "header" : "C26   O2    Attachment", 
 	    "E/N column" : 0,                    
 	    "rate/N column" : 1,                 
@@ -206,12 +215,25 @@
 	    "num points" : 10000,                 
 	    "spacing" : "exponential",           
 	    "scale rate/N": 1.0E-6
-	},	
+	},
+	{
+	    "reaction": "O2- + @ -> e + (O2)",
+	    "@": ["O2", "N2"],
+	    "description": "Detachment",
+	    "type": "table vs E/N",              
+	    "file" : "detachment_rate.dat",       
+	    "E/N column" : 0,                    
+	    "rate/N column" : 1,                 
+	    "min E/N" : 1.0,                     
+	    "max E/N" : 1000.0,                  
+	    "num points" : 10000,                 
+	    "spacing" : "exponential"
+	},		
 	{
 	    "reaction": "e + N2 -> e + Y + (N2)",    
 	    "description": "EUV generation",         
 	    "type": "table vs E/N",                          
-	    "file" : "transport_data.dat",                   
+	    "file" : "electron_transport_data.dat",                   
 	    "header" : "C25   N2    Ionization    15.60 eV", 
 	    "E/N column" : 0,                                
 	    "rate/N column" : 1,                             
