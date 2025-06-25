@@ -1,10 +1,12 @@
 #!/usr/bin/env  python
 
 from itertools import groupby, tee
+import sys
 
 
-def parse_report_file(filename: str, interresting: list[str] = None):
-    """ Parse an inception stepper report file containing optimal starting
+def parse_report_file(filename: str, interresting: list[str] = None) -> \
+        tuple[list[str], list[tuple[float, list[float]]]]:
+    """ Parse an inception stepper report file containing e.g. optimal starting
     positions for electrons
     """
     with open(filename) as f:
@@ -54,6 +56,7 @@ def parse_report_file(filename: str, interresting: list[str] = None):
                             field_dims.append(dim)
                         field_positions.append(pos)
 
+                # rearrange to header ranges
                 field_positions.append(-1)
                 a, b = tee(field_positions)
                 next(b, None)
@@ -61,21 +64,21 @@ def parse_report_file(filename: str, interresting: list[str] = None):
                 for pos_pair in zip(a, b):
                     field = header[pos_pair[0]:pos_pair[1]].strip()
                     if field[0] == '#':
-                        field = field[2:]
+                        field = field[1:].lstrip()
                     columns.append(field)
 
                 if interresting is None:
                     interresting = columns
 
             def take_vec(iterator, d):
-                assert (d > 1)
+                assert d > 1
                 vec = []
                 for i in range(d):
                     if i == 0:  # discard leading '(' and trailing ','
                         vec.append(float(next(iterator)[1:-1]))
                     else:  # discard trailing ',' and ')'
                         vec.append(float(next(iterator)[0:-1]))
-                return vec
+                return tuple(vec)
 
             # parse data rows as normal
             res = []
@@ -90,12 +93,16 @@ def parse_report_file(filename: str, interresting: list[str] = None):
                 else:
                     for i in range(d):  # skip ahead
                         next(it)
-            A.append(res)
+            A.append(tuple(res))
         return ([col for col in columns if col in interresting], A)
 
 
 if __name__ == '__main__':
-    res = parse_report_file('report.txt',
+
+    filename = 'report.txt'
+    if len(sys.argv) > 1:
+        filename = sys.argv[1]
+    res = parse_report_file(filename,
                             ['+/- Voltage', 'Max K(+)', 'Max K(-)',
                              'Pos. max K(+)', 'Pos. max K(-)'])
     print(res)
