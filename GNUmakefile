@@ -1,6 +1,6 @@
 
 TOPTARGETS := all clean
-SUBDIRS := StreamerIntegralCriterion/. Vessel/.
+SUBDIRS := Vessel/. StreamerIntegralCriterion/.
 
 $(TOPTARGETS): $(SUBDIRS)
 $(SUBDIRS):
