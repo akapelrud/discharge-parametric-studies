@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-#SBATCH --job-name=inception_stepper
-#SBATCH --account=nn12041k
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=128
-#SBATCH --time=
-
 import json
 import itertools
 import os
@@ -16,7 +10,7 @@ import sys
 import re
 import fileinput
 
-from subprocess import Popen
+from subprocess import Popen, PIPE
 import argparse
 import time
 
@@ -27,86 +21,6 @@ import logging.handlers
 
 from match_reaction import match_requirement, match_reaction
 
-
-def find_electron_placement(log, args):
-    # --------------------------------------------------------------------------
-    # run variables
-    # --------------------------------------------------------------------------
-    executable = "program2d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex"
-    exec_folder = "Vessel"
-    # --------------------------------------------------------------------------
-
-    nump = 2
-
-    commands = [
-            f"cp master.inputs {exec_folder}/",
-            f"cd {exec_folder}",
-            f"mpirun -np {nump:d} {executable} master.inputs "
-            ]
-    cmd = '; '.join(commands)
-    log.info(f"$ {cmd}")
-    p = Popen(cmd, shell=True)
-    # todo: We might want to store i.e. stderr output to the log file.
-
-    time.sleep(1)  # give the simulation time to start writing to pout.0:
-    while True:
-        res = p.poll()
-        if res is not None:
-            break
-
-    # parse_report_file()
-
-
-def step_sic(log, np, args):
-    # --------------------------------------------------------------------------
-    # run variables
-    # --------------------------------------------------------------------------
-    executable = "program2d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex"
-    sic_folder = "StreamerIntegralCriterion"
-
-    # --------------------------------------------------------------------------
-
-    potential_vals = []
-    for potential in potential_vals:
-        log.info('-'*40)
-        log.info(f'Potential: {potential} V')
-
-        output_directory = f"sic_{potential}"
-        commands = [
-                f"cp master.inputs {sic_folder}/",
-                f"cd {sic_folder}",
-                f"mpirun -np {np:d} {executable} master.inputs "
-                f"StreamerIntegralCriterion.potential = {potential} "
-                f"Driver.output_directory = {output_directory}"
-                ]
-        cmd = '; '.join(commands)
-        log.info(f"$ {cmd}")
-        p = Popen(cmd, shell=True)
-        # todo: We might want to store i.e. stderr output to the log file.
-
-        time.sleep(1)  # give the simulation time to start writing to pout.0:
-        with open(f'{sic_folder}/pout.0') as pout:
-            while True:
-                res = p.poll()
-                if res is not None:
-                    break
-
-                lines = pout.readlines()
-                ts_progress = None
-                for line in lines:
-                    if line.endswith('percentage of time steps completed\n'):
-                        ts_progress = float(line.strip()[3:].split()[0])
-                    elif line.endswith('percentage of simulation time completed\n'):
-                        sim_progress = float(line.strip()[3:].split()[0])
-                        log.info(f'ts: {ts_progress}% / sim: {sim_progress}%')
-                time.sleep(1)
-
-        if res != 0:
-            log.error(f'mpirun exited with return code: {res:d}')
-        else:
-            log.info('Test run complete')
-
-
 def get_combinations(pspace, keys):
     return itertools.product(*[pspace[key]['values'] for key in keys])
 
@@ -115,7 +29,7 @@ def get_chemistry_dict(filepath):
     chemistry_content = []
     with open(filepath) as chem_file:
         for line in chem_file:
-            chemistry_content.append(line.partition('//')[0])
+            chemistry_content.append(line.partition('//')[0])  # strip comments
     return json.loads(''.join(chemistry_content))
 
 
@@ -126,7 +40,7 @@ def set_nested_value(d, keys: list[str], value):
     log = logging.getLogger(sys.argv[0])
 
     for key in keys[:-1]:
-        if isinstance(d, list):
+        if isinstance(d, list):  # here we have to search
             if not (key.startswith('+[') or key.startswith('*[')):
                 raise RuntimeError('no requirement found for matching to list '
                                    f'element for key: {key}')
@@ -240,7 +154,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
 
     found_line = False
 
-    for line in fileinput.input(input_file, inplace=True):  # every print writes to file
+    for line in fileinput.input(input_file, inplace=True):  # print() writes to file
         if not found_line and line.startswith(pspace[key]['uri']):
             content = line
             commentpos = content.find('#')
@@ -299,8 +213,14 @@ def main():
             description="Batch script for mapping out streamer integral conditions")
     parser.add_argument("--verbose", action="store_true", help="increase verbosity")
     parser.add_argument("--logfile", default="master.log", help="log file")
+
+    # output arguments
     parser.add_argument("--output-dir", default="results", type=Path,
                         help="output directory for result files")
+    parser.add_argument("--array-job-prefix", default='run_', type=str,
+                        help="prefix for subdirectories in the 'output-dir'")
+
+    # input file arguments
     parser.add_argument("--chemistry-file", default=Path("chemistry.json"),
                         type=Path, help="chemistry input file")
     parser.add_argument("--parameter-space-file",
@@ -311,8 +231,13 @@ def main():
     parser.add_argument("--master-input-file",
                         default=Path("master.inputs"), type=Path,
                         help="master input file for chombo-discharge")
-    parser.add_argument("--array-job-prefix", default='run_', type=str,
-                        help="prefix for subdirectories in the 'output-dir'")
+
+    # run options
+    parser.add_argument("--dim", default=3, type=int,
+                        help="dimensionality of simulation")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Only output intended sbatch (slurm) command.")
+
     args, unknownargs = parser.parse_known_args()
 
     log = logging.getLogger(sys.argv[0])
@@ -328,7 +253,6 @@ def main():
     fh.setFormatter(formatter)
     log.addHandler(fh)
     log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
-
     if doroll:
         fh.doRollover()
 
@@ -364,7 +288,9 @@ def main():
     index = {
             'parameter_space': pspace,
             'keys_output_order': list(keys),
-            'job_prefix': args.array_job_prefix
+            'job_prefix': args.array_job_prefix,
+            'dim': args.dim,
+            'dry_run': args.dry_run
             }
 
     with open(args.output_dir / 'result_index.json', 'x') as resindfile:
@@ -373,10 +299,33 @@ def main():
     log.info(f'Parameter order: {list(keys)}')
     combinations = list(get_combinations(pspace, keys))
     num_combs = len(combinations)
+    
     log.info(f'Number of parameter space combinations: {num_combs}')
     num_digits = len(str(num_combs))
 
+    num_jobs = num_combs
+    if num_jobs > 1000:
+        log.warning("The number of combinations > 1000 (sigma2 limit for "
+                    "array slurm array jobs")
+
     chemistry = get_chemistry_dict(args.chemistry_file)
+
+    # top level program files
+    shutil.copy(
+            f'InceptionStepper/program{args.dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
+            args.output_dir / f"inception_stepper_program{args.dim:d}d",
+            follow_symlinks=True)
+    shutil.copy(
+            f'StreamerIntegralCriterion/program{args.dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
+            args.output_dir / f"streamer_integral_criterion_program{args.dim:d}d",
+            follow_symlinks=True)
+    shutil.copy('parse_report.py', args.output_dir)
+
+    # these are copied into every run directory
+    required_files = [
+            'bolsig_air.dat',
+            'transport_data.txt',
+            ]
 
     log.info("Creating and populating working directories for array jobs")
     output_name_pattern = '{job_prefix}{i:0{num_digits}d}'
@@ -396,7 +345,7 @@ def main():
 
         # Dump an json index file with the parameter space combination.
         # This might not be needed, as the values can be found from other input
-        # files. Will be handy when browsing and cataloguing the result sets.
+        # files. Could be handy though when browsing and cataloguing the result sets.
         with open(res_dir / 'index.json', 'x') as index:
             json.dump(comb_dict, index, indent=4)
 
@@ -408,9 +357,8 @@ def main():
         with open(res_dir / 'chemistry.json', 'x') as run_chem:
             json.dump(chemistry, run_chem, indent=4)
         
-        # copy in the rest of the resources
-        shutil.copy('bolsig_air.dat', res_dir)
-        shutil.copy('transport_data.txt', res_dir)
+        for file in required_files:
+            shutil.copy(file, res_dir)
 
     # we now now the number of combination runs to perform, the next task is to
     # determine the number of voltages to calculate. Robert need's to do his magic
@@ -424,15 +372,18 @@ def main():
     # where the number of voltages tested is voltage_steps+2
 
     # it should be possible to run sbatch inside of an sbatch script
-    num_jobs = num_combs
-    job_name='inception_stepper'
+    if args.dry_run:
+        log.info("DRY RUN")
 
-    cmdstr = f'sbatch --array=1-{num_jobs} --chdir={args.output_dir}
-    --job-name={job_name} inception_stepper.py'
+    job_name='inception_stepper'
+    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{args.output_dir}" ' + \
+        f'--job-name={job_name} inception_stepper.py'
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
     job_id = -1
     while True: # wait until sbatch is complete
+
+        # try to capture the job id
         line = p.stdout.readline()
         if line:
             m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
@@ -443,9 +394,11 @@ def main():
             break
 
     if job_id != -1:
-        log.info("Submitted array job (inception stepper over combinations)."
-                 f" [slurm job id = {job_id}")
-    {job_id}
+        with open(res_dir / 'inception_stepper_array_job_id', 'x') as job_id_file:
+            job_id_file.write(job_id)
+
+        log.info("Submitted array job (_inception stepper_ over all combinations)."
+                 f" [slurm job id = {job_id}]")
 
 if __name__ == '__main__':
     main()
