@@ -208,64 +208,28 @@ def handle_combination(keys, pspace, comb_dict, chemistry, input_file):
             case _:
                 continue
 
-def main():
-    parser = argparse.ArgumentParser(
-            description="Batch script for mapping out streamer integral conditions")
-    parser.add_argument("--verbose", action="store_true", help="increase verbosity")
-    parser.add_argument("--logfile", default="master.log", help="log file")
+def get_parameter_space(parameter_space_file: Path):
+    """Read in the parameter space to be mapped.
 
-    # output arguments
-    parser.add_argument("--output-dir", default="results", type=Path,
-                        help="output directory for result files")
-    parser.add_argument("--array-job-prefix", default='run_', type=str,
-                        help="prefix for subdirectories in the 'output-dir'")
+    If the filename extension:
 
-    # input file arguments
-    parser.add_argument("--chemistry-file", default=Path("chemistry.json"),
-                        type=Path, help="chemistry input file")
-    parser.add_argument("--parameter-space-file",
-                        default=Path("parameter_space.json"),
-                        type=Path, help="parameter space input file. "
-                        "Json read directly, or if .py file look for 'pspace' "
-                        "dictionary")
-    parser.add_argument("--master-input-file",
-                        default=Path("master.inputs"), type=Path,
-                        help="master input file for chombo-discharge")
+    *.json:
+        parse json as dict and look for toplevel object named 'parameter_space'
 
-    # run options
-    parser.add_argument("--dim", default=3, type=int,
-                        help="dimensionality of simulation")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Only output intended sbatch (slurm) command.")
+    *.py:
+        look for global variable named 'top_object' and look for key-value pair
+        'parameter_space':dict(...)
+    """
 
-    args, unknownargs = parser.parse_known_args()
-
-    log = logging.getLogger(sys.argv[0])
-    formatter = logging.Formatter(
-            '%(asctime)s | %(levelname)s :: %(message)s')
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setFormatter(formatter)
-    log.addHandler(sh)
-
-    doroll = os.path.isfile(args.logfile)
-    fh = logging.handlers.RotatingFileHandler(
-            args.logfile, backupCount=5, encoding='utf-8')
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
-    log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
-    if doroll:
-        fh.doRollover()
-
-    # read in the parameter space to be mapped
-    match args.parameter_space_file.suffix:
+    match parameter_space_file.suffix:
         case '.json':
-            with open(args.parameter_space_file) as jsonfile:
+            with open(parameter_space_file) as jsonfile:
                 pspace = json.load(jsonfile)['parameter_space']
         case '.py':
             # https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
             module_name = 'param_space'
             spec = importlib.util.spec_from_file_location(
-                    module_name, args.parameter_space_file)
+                    module_name, parameter_space_file)
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
@@ -276,24 +240,40 @@ def main():
         case _:
             raise ValueError('Wrong filetype for option --parameter-space-file')
 
+    return pspace
+
+
+def setup(log,
+          output_dir,
+          array_job_prefix,
+          parameter_space_file,
+          chemistry_file = 'chemistry.json',
+          master_input_file = 'master.inputs',
+          dim=3, verbose=False, dry_run=False):
+    """ Parse the parameter space definition and create output directory structure for
+    all combinations in the parameter space.
+    """
+
+    pspace = get_parameter_space(parameter_space_file)
+
     # The parse order of json objects are not guaranteed, so keep track of the
     # order explicitly here.
     keys = pspace.keys()
 
     log.debug("Creating output directory (if not exists)")
-    os.makedirs(args.output_dir, exist_ok=False)  # yes, crap out if it exists
+    os.makedirs(output_dir, exist_ok=False)  # yes, crap out if it exists
 
     # store a copy of the parameter space used and the parse order of the keys,
     # so that this can be retrieved for postprocessing
     index = {
             'parameter_space': pspace,
             'keys_output_order': list(keys),
-            'job_prefix': args.array_job_prefix,
-            'dim': args.dim,
-            'dry_run': args.dry_run
+            'job_prefix': array_job_prefix,
+            'dim': dim,
+            'dry_run': dry_run
             }
 
-    with open(args.output_dir / 'result_index.json', 'x') as resindfile:
+    with open(output_dir / 'result_index.json', 'x') as resindfile:
         json.dump(index, resindfile, indent=4)
 
     log.info(f'Parameter order: {list(keys)}')
@@ -308,18 +288,18 @@ def main():
         log.warning("The number of combinations > 1000 (sigma2 limit for "
                     "array slurm array jobs")
 
-    chemistry = get_chemistry_dict(args.chemistry_file)
+    chemistry = get_chemistry_dict(chemistry_file)
 
     # top level program files
     shutil.copy(
-            f'InceptionStepper/program{args.dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
-            args.output_dir / f"inception_stepper_program{args.dim:d}d",
+            f'InceptionStepper/program{dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
+            output_dir / f"inception_stepper_program{dim:d}d",
             follow_symlinks=True)
     shutil.copy(
-            f'StreamerIntegralCriterion/program{args.dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
-            args.output_dir / f"streamer_integral_criterion_program{args.dim:d}d",
+            f'StreamerIntegralCriterion/program{dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
+            output_dir / f"streamer_integral_criterion_program{dim:d}d",
             follow_symlinks=True)
-    shutil.copy('parse_report.py', args.output_dir)
+    shutil.copy('parse_report.py', output_dir)
 
     # these are copied into every run directory
     required_files = [
@@ -332,16 +312,16 @@ def main():
 
     for i, combination in enumerate(combinations):
 
-        output_name = output_name_pattern.format(job_prefix=args.array_job_prefix, i=i,
+        output_name = output_name_pattern.format(job_prefix=array_job_prefix, i=i,
                                                  num_digits=num_digits)
         comb_dict = dict(zip(keys, combination))
         log.debug(f'{output_name} --> {json.dumps(comb_dict)}')
 
-        res_dir = args.output_dir / output_name
+        res_dir = output_dir / output_name
         os.mkdir(res_dir)  # yes, crash if you must
 
         run_input = res_dir / 'run.inputs'
-        shutil.copy(args.master_input_file, run_input)
+        shutil.copy(master_input_file, run_input)
 
         # Dump an json index file with the parameter space combination.
         # This might not be needed, as the values can be found from other input
@@ -360,23 +340,15 @@ def main():
         for file in required_files:
             shutil.copy(file, res_dir)
 
-    # we now now the number of combination runs to perform, the next task is to
-    # determine the number of voltages to calculate. Robert need's to do his magic
+    return {'num_jobs':num_jobs}
 
-    # For each combination a inception stepper run is needed followed by
-    # the voltages as specified in the master.inputs file:
-    #     DischargeInceptionStepper.voltage_lo    = 10E3
-    #     DischargeInceptionStepper.voltage_hi    = 30E3
-    #     DischargeInceptionStepper.voltage_steps = 9
-    #
-    # where the number of voltages tested is voltage_steps+2
-
-    # it should be possible to run sbatch inside of an sbatch script
-    if args.dry_run:
-        log.info("DRY RUN")
+def schedule_array_jobs(log, job_name, job_script, run_dir, num_jobs=-1, dry_run = False):
+    
+    if num_jobs < 1:
+        raise ValueError('num_jobs < 1')
 
     job_name='inception_stepper'
-    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{args.output_dir}" ' + \
+    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{run_dir}" ' + \
         f'--job-name={job_name} inception_stepper.py'
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
@@ -389,16 +361,69 @@ def main():
             m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
             if m:
                 job_id = m.groupdict()['job_id']
+                with open(run_dir / 'inception_stepper_array_job_id', 'x') as job_id_file:
+                    job_id_file.write(job_id)
+                log.info("Submitted array job (_inception stepper_ over all combinations)."
+                         f" [slurm job id = {job_id}]")
 
         if p.poll() is not None:
             break
 
-    if job_id != -1:
-        with open(res_dir / 'inception_stepper_array_job_id', 'x') as job_id_file:
-            job_id_file.write(job_id)
+def main():
+    parser = argparse.ArgumentParser(
+            description="Batch script for mapping out streamer integral conditions")
+    parser.add_argument("--verbose", action="store_true", help="increase verbosity")
+    parser.add_argument("--logfile", default="master.log", help="log file")
 
-        log.info("Submitted array job (_inception stepper_ over all combinations)."
-                 f" [slurm job id = {job_id}]")
+    # output arguments
+    parser.add_argument("--output-dir", default="results", type=Path,
+                        help="output directory for result files")
+    parser.add_argument("--array-job-prefix", default='run_', type=str,
+                        help="prefix for subdirectories in the 'output-dir'")
+
+    # input file arguments
+    parser.add_argument("--parameter-space-file",
+                        default=Path("parameter_space.json"),
+                        type=Path, help="parameter space input file. "
+                        "Json read directly, or if .py file look for 'pspace' "
+                        "dictionary")
+    parser.add_argument("--chemistry-file", default=Path("chemistry.json"),
+                        type=Path, help=".json chemistry input file")
+    parser.add_argument("--master-input-file",
+                        default=Path("master.inputs"), type=Path,
+                        help=".inputs chombo discharge master input file for"
+                        " chombo-discharge")
+
+    # run options
+    parser.add_argument("--dim", default=3, type=int,
+                        help="dimensionality of simulation")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Only output intended sbatch (slurm) command.")
+
+    args = parser.parse_args()
+
+    log = logging.getLogger(sys.argv[0])
+    formatter = logging.Formatter(
+            '%(asctime)s | %(levelname)s :: %(message)s')
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setFormatter(formatter)
+    log.addHandler(sh)
+
+    doroll = os.path.isfile(args.logfile)
+    fh = logging.handlers.RotatingFileHandler(
+            args.logfile, backupCount=5, encoding='utf-8')
+    fh.setFormatter(formatter)
+    log.addHandler(fh)
+    log.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
+    if doroll:
+        fh.doRollover()
+
+    # set up array job directory structures
+    setup_result = setup(log, **vars(args))
+
+    schedule_array_jobs(log, num_jobs=setup_result['num_jobs'],
+                        run_dir = args.output_dir,
+                        job_name = , dry_run = args.dry_run)
 
 if __name__ == '__main__':
     main()
