@@ -1,0 +1,102 @@
+
+# Prerequisites
+
+## Folder structure
+
+The batch scripts expects this folder structure somewhere in the project tree on
+betzy
+```
+    <staging>/
+    |--- inception_stepper_particle_position -> <some project folder>
+    |--- streamer_integral_criterion -> <some project folder>
+    |--- input_files/
+            |--- ...
+    |--- results/
+            |--- inception_stepper_report.txt   # (generated)
+            |--- V<voltage>_P<pressure>         # (generated) -- or similar naming scheme
+            |--- index.{json,yaml}
+```
+
+The goal is that this tree itself can be run as a parametrised entity
+    * pressure 
+
+## Input files
+    
+    - master.input
+        * shared geometry definition for both simulations
+    - extra_input.json
+        * contains pressure table, photoion. table etc.
+    - commandline.input
+        * mechanism to write extra parameters, supplied to mpirun at runtime
+    - air_chemistry.json
+    - bolsig_air.dat
+        * used by streamer_integral_criterion
+    - transport_data.txt
+        * used by inception stepper
+
+    - Robert's new files
+
+
+# Batch simulation
+    0) set up chombo & chombo discharge and make libraries
+    
+    1) [DONE] GNUmakefile that cd's into linked sub directories and builds the
+    program executables.
+
+    2) Parse parameter_space.json
+
+        Contains the parameter space to run the simulation over, i.e. pressures,
+        photoion. values, inhomogeneity factor, etc..
+
+        This quickly grows if all parameters are to be taken into account, say 10
+        pressure values, 10 photoion. values, 10 inhomo. factors
+            => table of 1000 elements
+
+        * Some of these values are to be written to the air_chemistry.json
+          input file and some are alterations to the master.input
+
+        The air_chemistry.json is easy to deal with, just read it in as a dict
+        in python, alter the corresponding fields by following an uri (dict
+        level address) and export to a new air_chemistry.json-file for each run.
+
+        The master.input can either be changed directly, or the values can be
+        supplied as extra command line parameter to mpirun
+
+        For each of these points (pressure, phot.ion.efficiency, etc.) we need
+        to test several voltages as determined by the inception stepper model.
+
+    2) Run inception stepper as array job at pressures to get report files
+
+        each entry in the parameter_space.json needs to be
+
+        - copy input files to working directory
+        - copy report.txt to <staging>/results/inception_stepper_report_P<pressure>.txt
+
+    3) schedule sbatch array job using inception_stepper_report.txt as input
+        a) preliminary parse of inception_stepper_report.txt to determine
+        number of array jobs and to map array index to (pressure, voltage, ..) input
+        table
+
+            1) dump parseable index file (json | yaml) containing all array
+            job subdirectories and relevant parameters to enable data post
+            processing
+
+        b) in each array job:
+            - get particle position from inception_stepper_report.txt using array
+              index and alter/write to
+                chemistry.json
+		//    "single particle" : {         
+		//	"position" : [ 0, -1E-3, 0 ], // Position is at (0,00)
+		//	"weight" : 100              // Physical particle with weight = 1
+            - write pressure, detachment and photo ion. to chemistry.json
+                ( use extra_input.json or similar mechanism)
+            - copy input files to working directory
+
+            - read commandline.input
+                * Run program with parametrized options (voltage, pressure, etc.):
+                $ mpirun <executable> [option1=value1] ...
+            - copy out result files to project staging directory if different from working
+              dir:
+                pout.0
+                plt/*
+
