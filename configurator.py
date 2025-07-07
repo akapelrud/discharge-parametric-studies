@@ -4,6 +4,7 @@ import json
 import itertools
 import os
 import shutil
+import sqlite3
 from pathlib import Path
 import importlib.util
 import sys
@@ -21,16 +22,21 @@ import logging.handlers
 
 from match_reaction import match_requirement, match_reaction
 
+LOG_SPACER_STR = '-'*40
+
 def get_combinations(pspace, keys):
     return itertools.product(*[pspace[key]['values'] for key in keys])
 
 
-def get_chemistry_dict(filepath):
-    chemistry_content = []
-    with open(filepath) as chem_file:
-        for line in chem_file:
-            chemistry_content.append(line.partition('//')[0])  # strip comments
-    return json.loads(''.join(chemistry_content))
+def parse_commented_json_to_dict(filepath):
+    """ Reads filepath line by line and strips all C++ style block (//) comments. Parse
+    using json module and return contents as a dict.
+    """
+    json_content = []
+    with open(filepath) as json_file:
+        for line in json_file:
+            json_content.append(line.partition('//')[0])  # strip comments
+    return json.loads(''.join(json_content))
 
 
 def set_nested_value(d, keys: list[str], value):
@@ -123,7 +129,10 @@ def expand_uri(uri, disparate=False, level=0):
         res = [res]
     return res
 
-def handle_chemistry_combination(chemistry, key, pspace, comb_dict):
+
+def handle_json_combination(json_content, key, pspace, comb_dict):
+    """ Write key value from comb_dict to the appropriate json uri
+    """
     disparate = 'disparate' in pspace[key] and pspace[key]['disparate']
     expanded_uri = expand_uri(pspace[key]['uri'], disparate=disparate)
     dims = len(expanded_uri)
@@ -136,7 +145,7 @@ def handle_chemistry_combination(chemistry, key, pspace, comb_dict):
             raise ValueError("requirement uri has different dimensionality "
                              "than value field")
     for i, uri in enumerate(expanded_uri):
-        set_nested_value(chemistry, uri,
+        set_nested_value(json_content, uri,
                          comb_dict[key] if dims == 1 else comb_dict[key][i])
 
 
@@ -197,84 +206,155 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
                 line = newline
         sys.stdout.write(line)
 
-def handle_combination(keys, pspace, comb_dict, chemistry, input_file):
+def handle_combination(keys, pspace, comb_dict):
     log = logging.getLogger(sys.argv[0])
+
+    json_cache = {}
     for key in keys:
-        match pspace[key]['target']:
-            case 'chemistry':
-                handle_chemistry_combination(chemistry, key, pspace, comb_dict)
-            case 'input':
-                handle_input_combination(input_file, key, pspace, comb_dict)
+        target = Path(pspace[key]['target'])
+
+        match target.suffix:
+            case '.json':
+                json_content = None
+                if target in json_cache:
+                    json_content = json_cache[target]
+                else:
+                    json_content = parse_commented_json_to_dict(target)
+                    json_cache[target] = json_content
+                handle_json_combination(json_content, key, pspace, comb_dict)
+            case '.inputs':
+                handle_input_combination(target, key, pspace, comb_dict)
             case _:
                 continue
 
-def get_parameter_space(parameter_space_file: Path):
-    """Read in the parameter space to be mapped.
+    # write back all modified json caches
+    for key, value in json_cache.items():
+        with open(key, 'w') as json_file:
+            json.dump(value, json_file, indent=4)
+
+
+def parse_structure_from_input_file(run_definition_file: Path):
+    """Read in the database and study definitions
 
     If the filename extension:
 
     *.json:
-        parse json as dict and look for toplevel object named 'parameter_space'
-
+        parse json as dict
     *.py:
         look for global variable named 'top_object' and look for key-value pair
         'parameter_space':dict(...)
     """
 
-    match parameter_space_file.suffix:
+    match run_definition_file.suffix:
         case '.json':
-            with open(parameter_space_file) as jsonfile:
-                pspace = json.load(jsonfile)['parameter_space']
+            with open(run_definition_file) as jsonfile:
+                structure = json.load(jsonfile)
         case '.py':
             # https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-            module_name = 'param_space'
+            module_name = 'run_definition'
             spec = importlib.util.spec_from_file_location(
-                    module_name, parameter_space_file)
+                    module_name, run_definition_file)
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
 
-            # assume there is a global variable dictionary with the name "pspace" in
-            # said module
-            pspace = module.pspace
+            # look for top object, might crap out
+            structure = module.top_object
         case _:
             raise ValueError('Wrong filetype for option --parameter-space-file')
+    return structure
 
-    return pspace
+
+def setup_database_index(log, con, keys, pspace):
+
+    table_query = ["CREATE TABLE parameters (",
+                   "id", *[f", {key} float" for key in keys],
+                   ")"
+                   ]
+    query = "".join(table_query)
+    log.debug(f"database table:\n{' '*4}{query}")
+    con.execute(query)
+    con.commit()
+    pass
 
 
-def setup(log,
-          output_dir,
-          array_job_prefix,
-          parameter_space_file,
-          chemistry_file = 'chemistry.json',
-          master_input_file = 'master.inputs',
-          dim=3, verbose=False, dry_run=False):
-    """ Parse the parameter space definition and create output directory structure for
-    all combinations in the parameter space.
+def copy_required_files(log, required_files, destination, verbose=True):
+    """ Copy the required files to the destination
     """
+    for file in required_files:
+        shutil.copy(file, destination, follow_symlinks=True)
+        log.info(f'copying in file: {file}')
 
-    pspace = get_parameter_space(parameter_space_file)
 
+def setup_env(log, obj, obj_type, output_dir, dim):
+    """ Set up output directory and copy in required files, program and job_script
+    """
+    ident = obj['identifier']
+    jobscript = obj['job_script']
+    
+    out_dir = output_dir / obj['output_directory']
+
+    log.info(LOG_SPACER_STR)
+    log.info(f"Setting up {obj_type} simulation: '{ident}'")
+
+    os.makedirs(out_dir, exist_ok=False)  # yes, crap out if it exists
+    log.info(f"  * directory: {out_dir}")
+
+    shutil.copy(obj['job_script'], out_dir, follow_symlinks=True)
+    log.info(f"  * job_script: {jobscript}")
+
+    program = obj['program']
+    try:
+        program = program.format(DIMENSIONALITY=dim)
+    except:
+        pass  # ok. The program does not contain a template parameter
+   
+    shutil.copy( program, out_dir, follow_symlinks=True)
+    log.info(f"  * program: {program}")
+
+    copy_required_files(log, obj['required_files'], out_dir, verbose=True)
+
+    log.info(LOG_SPACER_STR)
+
+    return (out_dir, program)
+
+def setup_database(log, database_definition, output_dir, dim):
+    df = database_definition  # alias
+    ident = df['identifier']
+
+    db_dir, program = setup_env(log, database_definition, "database", output_dir, dim)
+
+    pspace = df['parameter_space']
     # The parse order of json objects are not guaranteed, so keep track of the
-    # order explicitly here.
+    # order explicitly here:
     keys = pspace.keys()
-
-    log.debug("Creating output directory (if not exists)")
-    os.makedirs(output_dir, exist_ok=False)  # yes, crap out if it exists
 
     # store a copy of the parameter space used and the parse order of the keys,
     # so that this can be retrieved for postprocessing
     index = {
             'parameter_space': pspace,
-            'keys_output_order': list(keys),
-            'job_prefix': array_job_prefix,
+            'space_order': list(keys),
             'dim': dim,
-            'dry_run': dry_run
             }
+    with open(db_dir / 'result_index.json', 'x') as resind_file:
+        json.dump(index, resind_file, indent=4)
 
-    with open(output_dir / 'result_index.json', 'x') as resindfile:
-        json.dump(index, resindfile, indent=4)
+    log.info("creating sqlite3 index db and tables")
+    con = sqlite3.connect(db_dir / 'index.db')
+    setup_database_index(log, con, keys, pspace)
+    
+    log.info(LOG_SPACER_STR)
+    return con
+
+
+def setup_study(log, study, databases, output_dir, dim):
+
+    ident = study['identifier']
+    
+    st_dir, program = setup_env(log, study, "study", output_dir, dim)
+
+    pspace = study['parameter_space']  # alias used below
+    keys = pspace.keys()
 
     log.info(f'Parameter order: {list(keys)}')
     combinations = list(get_combinations(pspace, keys))
@@ -288,59 +368,96 @@ def setup(log,
         log.warning("The number of combinations > 1000 (sigma2 limit for "
                     "array slurm array jobs")
 
-    chemistry = get_chemistry_dict(chemistry_file)
-
-    # top level program files
-    shutil.copy(
-            f'InceptionStepper/program{dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
-            output_dir / f"inception_stepper_program{dim:d}d",
-            follow_symlinks=True)
-    shutil.copy(
-            f'StreamerIntegralCriterion/program{dim:d}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
-            output_dir / f"streamer_integral_criterion_program{dim:d}d",
-            follow_symlinks=True)
-    shutil.copy('parse_report.py', output_dir)
-
-    # these are copied into every run directory
-    required_files = [
-            'bolsig_air.dat',
-            'transport_data.txt',
-            ]
+    output_dir_prefix = 'run_'
+    if 'output_dir_prefix' in study:
+        odp = study['output_dir_prefix']
+        if not isinstance(odp, str):
+            raise ValueError(f"'output_dir_prefix' in study: {ident} is not a string'")
+        output_dir_prefix = study['output_dir_prefix']
 
     log.info("Creating and populating working directories for array jobs")
-    output_name_pattern = '{job_prefix}{i:0{num_digits}d}'
+    output_name_pattern = '{output_prefix}{i:0{num_digits}d}'
 
     for i, combination in enumerate(combinations):
 
-        output_name = output_name_pattern.format(job_prefix=array_job_prefix, i=i,
-                                                 num_digits=num_digits)
+        output_name = output_name_pattern.format(
+                output_prefix=output_dir_prefix, i=i, num_digits=num_digits)
         comb_dict = dict(zip(keys, combination))
         log.debug(f'{output_name} --> {json.dumps(comb_dict)}')
 
-        res_dir = output_dir / output_name
+        res_dir = st_dir / output_name
         os.mkdir(res_dir)  # yes, crash if you must
 
-        run_input = res_dir / 'run.inputs'
-        shutil.copy(master_input_file, run_input)
+        # make a copy of required files to the run directory
+        req_files_in_run_dir = copy_required_files(log,
+                                                   study['required_files'],
+                                                   res_dir, verbose=True)
 
         # Dump an json index file with the parameter space combination.
         # This might not be needed, as the values can be found from other input
         # files. Could be handy though when browsing and cataloguing the result sets.
-        with open(res_dir / 'index.json', 'x') as index:
+        with open(res_dir / 'parameters.json', 'x') as index:
             json.dump(comb_dict, index, indent=4)
 
-        # update the chemistry and input specification
-        # Deepcopying of chemistry should not be necessary, as all the
-        # combination's fields are written every time in this loop.
-        handle_combination(keys, pspace, comb_dict, chemistry, run_input)
-        
-        with open(res_dir / 'chemistry.json', 'x') as run_chem:
-            json.dump(chemistry, run_chem, indent=4)
-        
-        for file in required_files:
-            shutil.copy(file, res_dir)
+        cwd = os.getcwd()
+        os.chdir(res_dir)
+        # update the *.json and *.inputs target files in the run directory from the
+        # parameter space
+        handle_combination(keys, pspace, comb_dict)
+        os.chdir(cwd)
 
-    return {'num_jobs':num_jobs}
+def setup(log,
+          output_dir,
+          run_definition,
+          structure = None,
+          dim=3, verbose=False, dry_run=False):
+    """ Parse the parameter space definition and create output directory structure for
+    all combinations in the parameter space.
+    """
+
+    if structure is None:  # todo: merge structure and run_definition to one variable
+        structure = parse_structure_from_input_file(run_definition)
+
+    log.debug(structure)
+
+    if not 'studies' in structure:
+        raise ValueError('No studies present in run definition')
+
+    if not isinstance(structure['studies'], list):
+        raise ValueError("'studies' should be a list")
+    
+    log.debug(f"Creating output directory '{output_dir}' (if not exists)")
+    os.makedirs(output_dir, exist_ok=False)  # yes, crap out if it exists
+
+    def verify_fields(d):
+        """ Just verify the existence of a constant set of required field keys
+        """
+        required_fields = {
+                'identifier', 'job_script', 'required_files', 'parameter_space',
+                'program'
+                }
+        missing_fields = []
+        for f in required_fields:
+            if not f in d:
+                missing_fields.append(f)
+        return missing_fields
+
+    databases = {}  # map database identifier to sqlite connection
+    if 'databases' in structure:
+        for database in structure['databases']:
+            missing_fields = verify_fields(database)
+            if missing_fields:
+                raise ValueError(f'database is missing fields: {missing_fields}')
+            con = setup_database(log, database, output_dir, dim)
+            databases[database['identifier']] = con
+
+    for study in structure['studies']:
+        missing_fields = verify_fields(study)
+        if missing_fields:
+            raise ValueError(f'study is missing fields: {missing_fields}')
+        setup_study(log, study, databases, output_dir, dim)
+
+    return
 
 def schedule_array_jobs(log, job_name, job_script, run_dir, num_jobs=-1, dry_run = False):
     
@@ -373,32 +490,24 @@ def main():
     parser = argparse.ArgumentParser(
             description="Batch script for mapping out streamer integral conditions")
     parser.add_argument("--verbose", action="store_true", help="increase verbosity")
-    parser.add_argument("--logfile", default="master.log", help="log file")
+    parser.add_argument("--logfile", default="configurator.log", help="log file")
 
     # output arguments
-    parser.add_argument("--output-dir", default="results", type=Path,
-                        help="output directory for result files")
-    parser.add_argument("--array-job-prefix", default='run_', type=str,
-                        help="prefix for subdirectories in the 'output-dir'")
+    parser.add_argument("--output-dir", default="study_results", type=Path,
+                        help="output directory for study result files")
 
     # input file arguments
-    parser.add_argument("--parameter-space-file",
-                        default=Path("parameter_space.json"),
+    parser.add_argument("run_definition",
+                        default=Path("run_definition.json"),
                         type=Path, help="parameter space input file. "
-                        "Json read directly, or if .py file look for 'pspace' "
+                        "Json read directly, or if .py file look for 'top_object' "
                         "dictionary")
-    parser.add_argument("--chemistry-file", default=Path("chemistry.json"),
-                        type=Path, help=".json chemistry input file")
-    parser.add_argument("--master-input-file",
-                        default=Path("master.inputs"), type=Path,
-                        help=".inputs chombo discharge master input file for"
-                        " chombo-discharge")
 
     # run options
     parser.add_argument("--dim", default=3, type=int,
-                        help="dimensionality of simulation")
+                        help="dimensionality of simulations")
     parser.add_argument("--dry-run", action="store_true",
-                        help="Only output intended sbatch (slurm) command.")
+                        help="Don't run any mpi simulations, only create folder structures.")
 
     args = parser.parse_args()
 
@@ -419,11 +528,9 @@ def main():
         fh.doRollover()
 
     # set up array job directory structures
-    setup_result = setup(log, **vars(args))
 
-    schedule_array_jobs(log, num_jobs=setup_result['num_jobs'],
-                        run_dir = args.output_dir,
-                        job_name = , dry_run = args.dry_run)
+    setup_result = setup(log, args.output_dir, args.run_definition, dim=args.dim,
+                         verbose=args.verbose, dry_run=args.dry_run)
 
 if __name__ == '__main__':
     main()

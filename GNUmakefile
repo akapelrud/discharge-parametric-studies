@@ -1,6 +1,6 @@
 
 TOPTARGETS := all clean
-SUBDIRS := InceptionStepper/. StreamerIntegralCriterion/.
+SUBDIRS := InceptionStepper/. Plasma./
 
 $(TOPTARGETS): $(SUBDIRS)
 $(SUBDIRS):
