@@ -38,17 +38,17 @@ plasma_study_1 = {
         'output_directory': 'study0',
         'output_dir_prefix':'run_',
         'parameter_space': {
-            "pressure" : {
-                "database": "inception_stepper",  # database dependency
-                "target" : "chemistry.json",
-                "uri" : ["gas", "law", "my_ideal_gas", "pressure"],
-                "values" : list(np.arange(1e5, 11e5, 1e5))
-                },
             "geometry_radius" : {
                 "database": "inception_stepper",  # database dependency
                 "target" : "master.inputs",
                 "uri" : "Vessel.rod_radius",
-                "values" : [ [0.0, 25e-3] ]
+                "values" : [ 10e-3 , 25e-3]
+                },
+            "pressure" : {
+                "database": "inception_stepper",  # database dependency
+                "target" : "chemistry.json",
+                "uri" : ["gas", "law", "my_ideal_gas", "pressure"],
+                "values" : np.arange(1e5, 11e5, 10e5).tolist()
                 },
             "photoionization" : {
                 "target" : "chemistry.json",
