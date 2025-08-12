@@ -7,14 +7,13 @@ The batch scripts expects this folder structure somewhere in the project tree on
 betzy
 ```
     <staging>/
-    |--- inception_stepper_particle_position -> <some project folder>
-    |--- streamer_integral_criterion -> <some project folder>
+    |--- InceptionStepper -> <some project folder>
+    |--- Plasma -> <some project folder>
     |--- input_files/
             |--- ...
     |--- results/
             |--- inception_stepper_report.txt   # (generated)
-            |--- V<voltage>_P<pressure>         # (generated) -- or similar naming scheme
-            |--- index.{json,yaml}
+            |--- result_index.{json,yaml}
 ```
 
 The goal is that this tree itself can be run as a parametrised entity
