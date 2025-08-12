@@ -164,8 +164,23 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
         raise ValueError(f'empty uri string for: {key}')
     uri = pspace[key]['uri']
 
-    found_line = False
+    def format_value(value):
+        if isinstance(value, list):
+            try:
+                float(value[0])
+                isfloat = True
+            except:
+                isfloat = False
 
+            if isfloat:
+                newvalue = " ".join([f'{v:g}' for v in value])
+            else:
+                newvalue = " ".join(value)
+        else:
+            newvalue = value
+        return newvalue
+
+    found_line = False
     for line in fileinput.input(input_file, inplace=True):  # print() writes to file
         if not found_line and line.startswith(pspace[key]['uri']):
             content = line
@@ -185,20 +200,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
 
             if address.strip() == uri:
                 found_line = True
-                if isinstance(comb_dict[key], list):
-                    try:
-                        float(comb_dict[key][0])
-                        isfloat = True
-                    except:
-                        isfloat = False
-
-                    if isfloat:
-                        newvalue = " ".join([f'{v:g}' for v in comb_dict[key]])
-                    else:
-                        newvalue = " ".join(comb_dict[key])
-                else:
-                    newvalue = comb_dict[key]
-                newline = f'{address}={value_whitespace}{newvalue}'
+                newline = f'{address}={value_whitespace}{format_value(comb_dict[key])}'
                 newline_len = len(newline)
                 if commentpos != -1:
                     if newline_len > commentpos:
@@ -208,6 +210,11 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
                                 f'[script-altered]{comment[1:]}'
                 line = newline
         sys.stdout.write(line)
+    
+    if not found_line:
+        with open(input_file, 'a') as in_file:
+            in_file.write(f"\n{pspace[key]['uri']} = {format_value(comb_dict[key])}"
+                          " #[script-added]")
 
 def handle_combination(keys, pspace, comb_dict):
     log = logging.getLogger(sys.argv[0])
@@ -215,6 +222,8 @@ def handle_combination(keys, pspace, comb_dict):
     json_cache = {}
     for key in keys:
         target = Path(pspace[key]['target'])
+
+        log.debug(f"key: {key}, target: {target}")
 
         match target.suffix:
             case '.json':
@@ -358,6 +367,7 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
     os.chdir(res_dir)
     # update the *.json and *.inputs target files in the run directory from the
     # parameter space
+
     handle_combination(keys, pspace, comb_dict)
     os.chdir(cwd)
 
