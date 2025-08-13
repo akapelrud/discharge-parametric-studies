@@ -167,7 +167,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
             commentpos = content.find('#')
             comment = ""
             if commentpos != -1:
-                comment = line[commentpos:]
+                comment = line[commentpos:].rstrip()
                 content = line[:commentpos]
 
             eq_pos = content.find('=')
@@ -188,7 +188,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
                     else:
                         newline += f'{" "*(commentpos-newline_len)}# ' + \
                                 f'[script-altered]{comment[1:]}'
-                line = newline
+                line = newline + '\n'
         sys.stdout.write(line)
     
     if not found_line:
@@ -196,11 +196,11 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
             in_file.write(f"\n{pspace[key]['uri']} = {format_value(comb_dict[key])}"
                           " #[script-added]")
 
-def handle_combination(keys, pspace, comb_dict):
+def handle_combination(pspace, comb_dict):
     log = logging.getLogger(sys.argv[0])
 
     json_cache = {}
-    for key in keys:
+    for key in comb_dict.keys():
         target = Path(pspace[key]['target'])
 
         log.debug(f"key: {key}, target: {target}")
