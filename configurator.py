@@ -355,7 +355,7 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
                                                obj['required_files'],
                                                res_dir)
 
-    # Dump an json index file with the parameter space combination.
+    # Dump an json file with the parameter space combination.
     # This might not be needed, as the values can be found from other input
     # files. Could be handy though when browsing and cataloguing the result sets.
     # Take note that the field keys are the variable names of the parameters, not
@@ -367,7 +367,6 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
     os.chdir(res_dir)
     # update the *.json and *.inputs target files in the run directory from the
     # parameter space
-
     handle_combination(keys, pspace, comb_dict)
     os.chdir(cwd)
 
@@ -491,8 +490,11 @@ def setup(log,
                 raise ValueError(f'database is missing fields: {missing_fields}')
             keys, db_dir = setup_database(log, database, output_dir, dim)
 
-            # TODO: refactor from tuple to dict
-            databases[database['identifier']] = (database, db_dir, keys, set())
+            databases[database['identifier']] = dict(
+                    structure=database,
+                    directory=db_dir,
+                    keys=keys,
+                    combination_set=set())
     studies = {}
     for study in structure['studies']:
         missing_fields = verify_fields(study)
@@ -501,7 +503,7 @@ def setup(log,
         keys, combinations, db_params = setup_study(log, study, databases, output_dir, dim)
 
         studies[study['identifier']] = dict(
-                databases_deps=db_params.keys()
+                databases_deps=db_params,
                 )
 
         log.debug(f"keys: {keys}") 
@@ -521,7 +523,10 @@ def setup(log,
                                    f'database \'{db_id}\' but does not utilize all '
                                    f'parameters ({len(db_keys)}.')
 
-            db_structure, _, db_orig_keys, combination_set = databases[db_id]
+            db_dict = databases[db_id]
+            db_structure = db_dict['structure']
+            db_orig_keys = db_dict['keys']
+            combination_set = db_dict['combination_set']
 
             # in case the study referenced the parameters in a different order, resort
             order = get_sort_order(db_keys, db_orig_keys)
@@ -540,7 +545,9 @@ def setup(log,
             # add to combination set for db
             combination_set.update(db_combinations)
 
-            # NOT NEEDED now, but might be handy if one wants to parallelize slurm jobs
+            # NOT NEEDED now, but might be handy if one wants to parallelize slurm job
+            # and array dependencies.
+            #
             # even further: groupby db_combinations
             # grouped_combinations = defaultdict(list)
             # for j,comb in enumerate(combinations):
@@ -551,13 +558,13 @@ def setup(log,
             #     grouped_combinations[db_key].append((j,comb))
             # log.debug(grouped_combinations)
 
-        #schedule_array_jobs(log, study, afterok=db_job_ids)
-
     log.info(LOG_SPACER_STR)
     for db_id, db in databases.items():
-        structure, db_dir, keys, combination_set = db
-        sorted_combination_set = sorted(combination_set)
-        job_id = schedule_db_jobs(log, structure, db_dir, sorted_combination_set)
+        db['job_id'] = schedule_db_slurm_jobs(log, db['structure'],
+                                              db['directory'],
+                                              sorted(db['combination_set']))
+    #for study in structure['studies']:
+    #    schedule_study_slurm_jobs(log, study)
     
     return
 
@@ -568,7 +575,7 @@ def get_sort_order(sl, l):
     return [i[0] for i in sorted(enumerate(sl), key=lambda x:l.index(x[1]))]
 
 
-def schedule_db_jobs(log, structure, db_dir, sorted_combinations):
+def schedule_db_slurm_jobs(log, structure, db_dir, sorted_combinations):
     num_jobs = len(sorted_combinations)
     if num_jobs < 1:
         raise ValueError('num_jobs < 1')
@@ -576,7 +583,7 @@ def schedule_db_jobs(log, structure, db_dir, sorted_combinations):
     # 1) register jobs in db directory index
     # TODO: utilizing an sqlite database or similar will simplify reruns and
     # registerring more.
-    log.debug(f'registerring {num_jobs} db jobs')
+    log.debug(f'registering {num_jobs} db jobs')
 
     output_name_pattern = get_output_name_pattern(structure)
 
@@ -601,7 +608,7 @@ def schedule_db_jobs(log, structure, db_dir, sorted_combinations):
             m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
             if m:
                 job_id = m.groupdict()['job_id']
-                with open(db_dir / 'inception_stepper_array_job_id', 'x') as job_id_file:
+                with open(db_dir / 'array_job_id', 'x') as job_id_file:
                     job_id_file.write(job_id)
                 log.info(f"Submitted array job (over db '{job_name}' combination subset)."
                          f" [slurm job id = {job_id}]")
