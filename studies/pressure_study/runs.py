@@ -27,13 +27,14 @@ inception_stepper = {
         }
 
 plasma_study_1 = {
-        'identifier': 'some_id',
+        'identifier': 'photoion',
         'job_script': 'plasma_jobscript.py',
         'program': 'Plasma/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'required_files': [
             'master.inputs',
             'chemistry.json',
-            'bolsig_air.dat'
+            'bolsig_air.dat',
+            'parse_report.py'
             ],
         'output_directory': 'study0',
         'output_dir_prefix':'run_',
@@ -60,7 +61,7 @@ plasma_study_1 = {
                         ],
                     "efficiency"
                     ],
-                "values" : [[float(v), float(1.0-v)] for v in np.arange(0.0, 1.0, 0.25)]
+                "values" : [[float(v), float(1.0-v)] for v in np.arange(0.0, 1.0, 1.0)]
                 },
             }
         }

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 #SBATCH --account=nn12041k
-#SBATCH --job-name=inception_stepper
+#SBATCH --job-name=plasma
 ## #SBATCH --nodes=4
 ## #SBATCH --ntasks-per-node=128
 #SBATCH --time=0-00:10:00
-
 #SBATCH --output=R-%x.%A-%a.out
 #SBATCH --error=R-%x.%A-%a.err
 
@@ -17,46 +16,12 @@ import logging
 
 import subprocess
 
+from pathlib import Path
+
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file
 
-
-def run_plasma_code(log, task_id, dry_run=False):
-    report_data = []
-    if dry_run:
-        log.info("DRY RUN, skipping mpirun")
-        # generate some test data
-        report_data.append( (1234, 1.2345, -1.2345, (3.14, 3.14), (-3.14, -3.14)) )
-        log.info(f"generated test data: {report_data}")
-    else:
-        executable = f"../inception_stepper_program{dim:d}d"
-        cmd = f"mpirun {executable} run.inputs Random.seed={task_id:d}"
-        log.info(f"Running inception stepper: {cmd}")
-        p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
-        
-        # todo: We might want to store i.e. stderr output to the log file.
-        while True:
-            res = p.poll()
-            if res is not None:
-                break
-
-        report_data = parse_report_file('report.txt',
-                                  ['+/- Voltage',
-                                   'Max K(+)',
-                                   'Max K(-)',
-                                   'Pos. max K(+)',
-                                   'Pos. max K(-)'])
-        report_data = report_data[1]
-
-    # split positive and negative potential data
-    table = []
-    for voltage, k_p, k_n, pos_p, pos_n in report_data:
-        table.append((voltage, k_p, pos_p))
-        table.append((voltage, k_n, pos_n))
-    sorted_table = sorted(table, key=lambda t: t[0])
-
-    return sorted_table
 
 
 if __name__ == '__main__':
@@ -89,27 +54,97 @@ if __name__ == '__main__':
         if res is not None:
             break
 
-    with open('../study_index.json') as index_file:
-        index = json.load(index_file)
+    with open('structure.json') as structure_file:
+        structure = json.load(structure_file)
 
     job_prefix = 'run_'
-    if 'output_dir_prefix' in index:
-        job_prefix = index['output_dir_prefix']
+    if 'output_dir_prefix' in structure:
+        job_prefix = structure['output_dir_prefix']
 
     dim = 2
-    if 'dim' in index:
-        dim = index['dim']
+    if 'dim' in structure:
+        dim = structure['dim']
 
-    dpattern = f'^({job_prefix}[0]*{task_id:d})$'
+    dpattern = f'^({job_prefix}[0]*{task_id:d})$'  # account for possible leading zeros
     dname = [f for f in os.listdir() if (os.path.isdir(f) and re.match(dpattern, f))][0]
     log.info(f'chdir: {dname}')
     os.chdir(dname)
+    
+    input_file = None
+    for f in os.listdir():
+        if os.path.isfile(f) and f.endswith('.inputs'):
+            input_file = f
+            break
+    if not input_file:
+        raise ValueError('missing *.inputs file in run directory')
 
-    #sorted_table = run_plasma_code(log, task_id, dry_run=dry_run)
-    #log.debug(sorted_table)
+    log.info(f"input file: {input_file}")
 
-    #os.chdir('..')
-    # run setup script from this directory
-    #configurator.setup(f'--output {dname}')
-    #configurator.schedule_runs()
+    # get inception stepper run_directory
+    with open('../inception_stepper/structure.json') as db_structure_file:
+        db_structure = json.load(db_structure_file)
 
+    if not 'space_order' in db_structure:
+        raise ValueError("missing field 'space_order' in database 'inception_stepper'")
+
+    db_param_order = db_structure['space_order']
+    
+    with open('parameters.json') as param_file:
+        parameters = json.load(param_file)
+
+    db_search_index = []
+    for db_param in db_param_order:
+        db_search_index.append(parameters[db_param])
+
+    with open('../inception_stepper/index.json') as db_index_file:
+        db_index = json.load(db_index_file)
+
+    # todo: change the index to a better file format (sqlite3)
+    index = -1
+    for db_i, params in db_index.items():
+        if params == db_search_index:
+            index = int(db_i)
+            break
+
+    if index < 0:
+        raise RuntimeError(f'Unable to find db parameter_set: {db_param_order} = {db_search_index}')
+
+    log.info(f"Found database parameters {db_param_order} = {db_search_index} "
+             f"at index: {index}")
+
+    db_run_path = Path('../inception_stepper')
+    if 'output_dir_prefix' in db_structure:
+        db_run_path /= db_structure['output_dir_prefix'] + str(index)
+    else:
+        db_run_path /= 'run_' + str(index)
+
+    report_data = parse_report_file(db_run_path / 'report.txt',
+                              ['+/- Voltage',
+                               'Max K(+)',
+                               'Max K(-)',
+                               'Pos. max K(+)',
+                               'Pos. max K(-)'])
+    report_data = report_data[1]
+    # split positive and negative potential data
+    table = []
+    for voltage, k_p, k_n, pos_p, pos_n in report_data:
+        table.append((voltage, k_p, pos_p))
+        table.append((-voltage, k_n, pos_n))
+    sorted_table = sorted(table, key=lambda t: t[0])
+
+    log.info(sorted_table)
+
+    # write voltage index
+    with
+
+    #executable = Path("..") / \
+    #        structure['program'].format(DIMENSIONALITY=structure['dim'])
+    #cmd = f"mpirun {executable} {input_file} Random.seed={task_id:d}"
+    #log.info(f"Running inception stepper: {cmd}")
+    #p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
+    #
+    ## todo: We might want to store i.e. stderr output to the log file.
+    #while True:
+    #    res = p.poll()
+    #    if res is not None:
+    #        break

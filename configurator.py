@@ -9,9 +9,10 @@ from pathlib import Path
 import importlib.util
 import sys
 import re
-import fileinput
 
 from collections import defaultdict
+
+from config_util import *
 
 from subprocess import Popen, PIPE
 import argparse
@@ -21,8 +22,6 @@ import os.path
 
 import logging
 import logging.handlers
-
-from match_reaction import match_requirement, match_reaction
 
 LOG_SPACER_STR = '-'*40
 DEFAULT_OUTPUT_DIR_PREFIX = 'run_'
@@ -312,6 +311,13 @@ def setup_env(log, obj, obj_type, output_dir, dim):
     log.info(f"  * program: {program}")
 
     copy_required_files(log, obj['required_files'], out_dir)
+    
+    # store a copy of the parameter space used and the parse order of the keys,
+    # so that this can be retrieved for postprocessing
+    log.info("Structure json written to structure.json")
+    keys = list(obj['parameter_space'].keys())
+    with open(out_dir / 'structure.json', 'x') as structure_file:
+        json.dump(clean_definition(obj, keys, dim), structure_file, indent=4)
 
     log.info(LOG_SPACER_STR)
 
@@ -375,17 +381,12 @@ def setup_database(log, database_definition, output_dir, dim):
     df = database_definition  # alias
     ident = df['identifier']
 
-    db_dir, program = setup_env(log, database_definition, "database", output_dir, dim)
+    db_dir, program = setup_env(log, df, "database", output_dir, dim)
 
     pspace = df['parameter_space']
     # The parse order of json objects are not guaranteed, so keep track of the
     # order explicitly here:
     keys = list(pspace.keys())
-
-    # store a copy of the parameter space used and the parse order of the keys,
-    # so that this can be retrieved for postprocessing
-    with open(db_dir / 'structure.json', 'x') as structure_file:
-        json.dump(clean_definition(df, keys, dim), structure_file, indent=4)
 
     log.info(LOG_SPACER_STR)
     return keys, db_dir
@@ -400,10 +401,8 @@ def get_output_name_pattern(obj):
         output_dir_prefix = obj['output_dir_prefix']
     return output_dir_prefix+'{i:d}'
 
-def setup_study(log, study, databases, output_dir, dim):
-
+def setup_study(log, study, output_dir, dim):
     ident = study['identifier']
-    
     st_dir, program = setup_env(log, study, "study", output_dir, dim)
 
     pspace = study['parameter_space']  # alias used below
@@ -411,28 +410,6 @@ def setup_study(log, study, databases, output_dir, dim):
 
     log.info(f'Parameter order: {list(keys)}')
     combinations = list(get_combinations(pspace, keys))
-    num_combs = len(combinations)
-    
-    log.info(f'Number of parameter space combinations: {num_combs}')
-
-    num_jobs = num_combs
-    if num_jobs > 1000:
-        log.warning("The number of combinations > 1000 (sigma2 limit for "
-                    "array slurm array jobs")
-
-    output_name_pattern = get_output_name_pattern(study)
-    log.info("Creating and populating working directories for array jobs")
-
-
-    log.info("Study json written to study_index.json")
-    # TODO: this contains absolute paths for the required files, program, job_script
-    # etc., which is not ideal. Consider stripping this from the generated index file.
-    with open(st_dir / 'study_index.json', 'x') as study_index:
-        json.dump(clean_definition(study, keys, dim), study_index, indent=4)
-
-    # generate combination directories
-    for i, combination in enumerate(combinations):
-        setup_job_dir(log, study, output_name_pattern, st_dir, i, combination)
 
     db_params = {}  # guaranteed to have the same order as 'keys' returned below
     for key, param_def in pspace.items():
@@ -441,8 +418,9 @@ def setup_study(log, study, databases, output_dir, dim):
             if not dbname in db_params:
                 db_params[dbname] = []
             db_params[dbname].append(key)
-
-    return keys, combinations, db_params
+    
+    log.info(LOG_SPACER_STR)
+    return keys, combinations, st_dir, db_params
 
 def setup(log,
           output_dir,
@@ -495,15 +473,19 @@ def setup(log,
                     directory=db_dir,
                     keys=keys,
                     combination_set=set())
-    studies = {}
+    studies = dict()
     for study in structure['studies']:
         missing_fields = verify_fields(study)
         if missing_fields:
             raise ValueError(f'study \'{study["identifier"]}\' is missing fields: {missing_fields}')
-        keys, combinations, db_params = setup_study(log, study, databases, output_dir, dim)
+        keys, combinations, st_dir, db_params = setup_study(log, study, output_dir, dim)
 
         studies[study['identifier']] = dict(
-                databases_deps=db_params,
+                structure=study,
+                database_deps=db_params,
+                directory = st_dir,
+                keys=keys,
+                combinations=combinations
                 )
 
         log.debug(f"keys: {keys}") 
@@ -559,12 +541,36 @@ def setup(log,
             # log.debug(grouped_combinations)
 
     log.info(LOG_SPACER_STR)
+    # fire of db slurm jobs
     for db_id, db in databases.items():
-        db['job_id'] = schedule_db_slurm_jobs(log, db['structure'],
+        db['job_id'] = schedule_slurm_jobs(log, db['structure'],
                                               db['directory'],
                                               sorted(db['combination_set']))
-    #for study in structure['studies']:
-    #    schedule_study_slurm_jobs(log, study)
+    log.info(LOG_SPACER_STR)
+
+    # start dependent slurm array jobs
+    for st_id, study in studies.items():
+        log.debug(study)
+        dep_joblist = []
+        for db_id in study['database_deps'].keys():
+            db = databases[db_id]
+
+            log.debug(db['directory'].absolute())
+            log.debug(study['directory'].absolute())
+
+            os.symlink(
+                    Path('..')/db['directory'].relative_to(study['directory'].parent),
+                    study['directory'] / db_id,
+                    target_is_directory=True)
+            
+            # add slurm dependency
+            dep_joblist.append(db['job_id'])
+
+        log.debug(f"deps: {dep_joblist}")
+        schedule_slurm_jobs(log, study['structure'],
+                            study['directory'],
+                            study['combinations'],
+                            afterok_joblist=dep_joblist)
     
     return
 
@@ -575,28 +581,34 @@ def get_sort_order(sl, l):
     return [i[0] for i in sorted(enumerate(sl), key=lambda x:l.index(x[1]))]
 
 
-def schedule_db_slurm_jobs(log, structure, db_dir, sorted_combinations):
+def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
+                        afterok_joblist=None):
     num_jobs = len(sorted_combinations)
     if num_jobs < 1:
         raise ValueError('num_jobs < 1')
-
+    elif num_jobs > 1000:
+        log.warning("The number of combinations > 1000 (sigma2 limit for "
+                    "array slurm array jobs")
 
     output_name_pattern = get_output_name_pattern(structure)
 
-    log.debug(f'registering {num_jobs} db jobs')
+    log.debug(f'registering {num_jobs} jobs')
     log.debug('writing index file')
     # 1) register jobs in db directory index
     # TODO: utilizing an sqlite database or similar will simplify reruns and
     # registering, as json cannot have tuple keys (python can)
-    with open(db_dir / 'index.json', 'x') as resind_file:
+    with open(out_dir / 'index.json', 'x') as resind_file:
         json.dump({i:item for i,item in enumerate(sorted_combinations)}, resind_file, indent=4)
 
     for i, combination in enumerate(sorted_combinations):
-        setup_job_dir(log, structure, output_name_pattern, db_dir, i, combination)
+        setup_job_dir(log, structure, output_name_pattern, out_dir, i, combination)
 
-    job_name='inception_stepper'
-    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{db_dir}" ' + \
-        f'{structure["job_script"]}'
+    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{out_dir}" '
+
+    if afterok_joblist:
+        cmdstr += f"--dependency=afterok:{','.join([str(j) for j in afterok_joblist])} "
+
+    cmdstr += f'{structure["job_script"]}'
     log.debug(f'cmd string: \'{cmdstr}\'')
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
@@ -608,43 +620,15 @@ def schedule_db_slurm_jobs(log, structure, db_dir, sorted_combinations):
             m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
             if m:
                 job_id = m.groupdict()['job_id']
-                with open(db_dir / 'array_job_id', 'x') as job_id_file:
+                with open(out_dir / 'array_job_id', 'x') as job_id_file:
                     job_id_file.write(job_id)
-                log.info(f"Submitted array job (over db '{job_name}' combination subset)."
-                         f" [slurm job id = {job_id}]")
+                log.info(f"Submitted array job (for '{structure['identifier']}' "
+                         f"combination set). [slurm job id = {job_id}]")
 
         if p.poll() is not None:
             break
 
     return job_id
-
-
-def schedule_array_jobs(log, job_name, job_script, run_dir, num_jobs=-1, dry_run = False):
-    
-    if num_jobs < 1:
-        raise ValueError('num_jobs < 1')
-
-    job_name='inception_stepper'
-    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{run_dir}" ' + \
-        f'--job-name={job_name} inception_stepper.py'
-    p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
-
-    job_id = -1
-    while True: # wait until sbatch is complete
-
-        # try to capture the job id
-        line = p.stdout.readline()
-        if line:
-            m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
-            if m:
-                job_id = m.groupdict()['job_id']
-                with open(run_dir / 'inception_stepper_array_job_id', 'x') as job_id_file:
-                    job_id_file.write(job_id)
-                log.info("Submitted array job (_inception stepper_ over all combinations)."
-                         f" [slurm job id = {job_id}]")
-
-        if p.poll() is not None:
-            break
 
 def main():
     parser = argparse.ArgumentParser(
