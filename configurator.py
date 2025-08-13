@@ -168,8 +168,6 @@ def setup_database(log, database_definition, output_dir, dim):
     # The parse order of json objects are not guaranteed, so keep track of the
     # order explicitly here:
     keys = list(pspace.keys())
-
-    log.info(LOG_SPACER_STR)
     return keys, db_dir
 
 
@@ -191,7 +189,6 @@ def setup_study(log, study, output_dir, dim):
                 db_params[dbname] = []
             db_params[dbname].append(key)
     
-    log.info(LOG_SPACER_STR)
     return keys, combinations, st_dir, db_params
 
 def setup(log,
@@ -232,6 +229,7 @@ def setup(log,
 
     # map database identifier to data, keys and sets of (undetermined)
     # combinations to run
+    log.info(LOG_SPACER_STR)
     databases = {}
     if 'databases' in structure:
         for database in structure['databases']:
@@ -246,6 +244,8 @@ def setup(log,
                     directory=db_dir,
                     keys=keys,
                     combination_set=set())
+    
+    log.info(LOG_SPACER_STR)
     studies = dict()
     for study in structure['studies']:
         study['dim'] = dim
@@ -346,6 +346,7 @@ def setup(log,
                             study['directory'],
                             study['combinations'],
                             afterok_joblist=dep_joblist)
+    log.info(LOG_SPACER_STR)
     
     return
 

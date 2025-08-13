@@ -53,7 +53,10 @@ def set_nested_value(d, keys: list[str], value):
                         found_requirement = match_reaction(
                                 md['value'], element[md['field']])
                     case _:
-                        found_requirement = element[md['field']] == md['value']
+                        if md['value'] is None:
+                            found_requirement = True
+                        else:
+                            found_requirement = element[md['field']] == md['value']
 
                 if found_requirement:
                     d = element

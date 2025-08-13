@@ -11,7 +11,7 @@ inception_stepper = {
         'output_directory': 'is_db',
         'required_files': [
             'master.inputs',
-            'transport_data.txt',
+            'InceptionStepper/transport_data.txt',
             'parse_report.py'
             ],
         'parameter_space': {
@@ -47,7 +47,7 @@ plasma_study_1 = {
                 "database": "inception_stepper",  # database dependency
                 "target" : "master.inputs",
                 "uri" : "Vessel.rod_radius",
-                "values" : [ 500e-6 ]
+                "values" : [ 10e-3 ]
                 },
             "pressure" : {
                 "database": "inception_stepper",  # database dependency

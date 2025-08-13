@@ -163,6 +163,7 @@ if __name__ == '__main__':
                 voltage=row[0],
                 particle_position=row[2]
                 )
+        distribution_type = 'gaussian distribution'
         pspace = {
                 "voltage" : {
                     "target" : voltage_dir/input_file,
@@ -174,8 +175,8 @@ if __name__ == '__main__':
                         'plasma species',
                         '+["id"="e"]', # find electrons in list
                         'initial particles',
-                        '+["tag"="change-me"]',
-                        'gaussian distribution',  # TODO: choose in structure
+                        f'+["{distribution_type}"]',
+                        distribution_type,  # TODO: fix duplicity here
                         'center'
                         ]
                     }

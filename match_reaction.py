@@ -14,12 +14,14 @@ def match_requirement(suggested):
         }
     ]
 
-    match_requirement('+["some-field":<type>"value"]')
-    match_requirement('*["some-field":<type>"value"]')
+    match_requirement('+["some-field"=<type>"value"]')
+    match_requirement('*["some-field"=<type>"value"]')
 
     For this function there is no difference between *[] and +[], but the
     intention is for the user code to discriminate between optional (*) and
     hard requirement (+).
+
+    The rhs '=<type>"value"' part is optional.
 
     The type field is optional and can be used to indicate special parsing.:
 
@@ -35,7 +37,9 @@ def match_requirement(suggested):
         'type': None|str
     """
 
-    pattern = r'^(?P<req_type>\+|\*)\[\s*\"(?P<field>.+?)\"\s*=\s*(?:<(?P<type>.+?)?>)?\s*\"(?P<value>.+?)\"\s*\]$'
+    pattern = r'^(?P<req_type>\+|\*)\[\s*\"(?P<field>.+?)\"\s*' + \
+            r'(?:=\s*(?:<(?P<type>.+?)?>)?\s*\"(?P<value>.+?)\")?' + \
+            r'\s*\]$'
     m = re.match(pattern, suggested)
     if not m:
         return None
