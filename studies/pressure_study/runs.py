@@ -4,7 +4,7 @@ import json
 import numpy as np
 
 inception_stepper = {
-        'identifier': 'inception_stepper',  # unique
+        'identifier': 'inception_stepper',
         'job_script': 'inception_stepper_jobscript.py',
         'program': 'InceptionStepper/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'result_files': ['report.txt'],
@@ -17,7 +17,7 @@ inception_stepper = {
         'parameter_space': {
             "pressure": {
                 "target": "master.inputs",
-                "uri": "InceptionStepper.pressure"
+                "uri": "DischargeInception.pressure"
                 },
             "geometry_radius" : {
                 "target" : "master.inputs",
@@ -27,8 +27,8 @@ inception_stepper = {
         }
 
 plasma_study_1 = {
-        'job_script': 'plasma_jobscript.py',
         'identifier': 'some_id',
+        'job_script': 'plasma_jobscript.py',
         'program': 'Plasma/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'required_files': [
             'master.inputs',
@@ -42,13 +42,13 @@ plasma_study_1 = {
                 "database": "inception_stepper",  # database dependency
                 "target" : "master.inputs",
                 "uri" : "Vessel.rod_radius",
-                "values" : [ 10e-3 , 25e-3]
+                "values" : [ 500e-6 ]
                 },
             "pressure" : {
                 "database": "inception_stepper",  # database dependency
                 "target" : "chemistry.json",
                 "uri" : ["gas", "law", "my_ideal_gas", "pressure"],
-                "values" : np.arange(1e5, 11e5, 10e5).tolist()
+                "values" : [ 1e5 ]  # np.arange(1e5, 11e5, 10e5).tolist()
                 },
             "photoionization" : {
                 "target" : "chemistry.json",
