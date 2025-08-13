@@ -13,6 +13,7 @@ import sys
 import json
 import re
 import logging
+from pathlib import Path
 
 import subprocess
 
@@ -67,11 +68,23 @@ if __name__ == '__main__':
     log.info(f'chdir: {dname}')
     os.chdir(dname)
 
-    #sorted_table = run_plasma_code(log, task_id, dry_run=dry_run)
-    #log.debug(sorted_table)
+    input_file = None
+    for f in os.listdir():
+        if os.path.isfile(f) and f.endswith('.inputs'):
+            input_file = f
+            break
 
-    #os.chdir('..')
-    # run setup script from this directory
-    #configurator.setup(f'--output {dname}')
-    #configurator.schedule_runs()
+    if not input_file:
+        raise ValueError('missing *.inputs file in run directory')
 
+    executable = Path("..") / \
+            structure['program'].format(DIMENSIONALITY=structure['dim'])
+    cmd = f"mpirun {executable} {input_file} Random.seed={task_id:d}"
+    log.info(f"Running inception stepper: {cmd}")
+    p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
+    
+    # todo: We might want to store i.e. stderr output to the log file.
+    while True:
+        res = p.poll()
+        if res is not None:
+            break
