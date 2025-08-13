@@ -152,7 +152,7 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
     os.chdir(res_dir)
     # update the *.json and *.inputs target files in the run directory from the
     # parameter space
-    handle_combination(keys, pspace, comb_dict)
+    handle_combination(pspace, comb_dict)
     os.chdir(cwd)
 
 
