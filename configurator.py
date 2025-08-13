@@ -580,14 +580,14 @@ def schedule_db_slurm_jobs(log, structure, db_dir, sorted_combinations):
     if num_jobs < 1:
         raise ValueError('num_jobs < 1')
 
-    # 1) register jobs in db directory index
-    # TODO: utilizing an sqlite database or similar will simplify reruns and
-    # registerring more.
-    log.debug(f'registering {num_jobs} db jobs')
 
     output_name_pattern = get_output_name_pattern(structure)
 
+    log.debug(f'registering {num_jobs} db jobs')
     log.debug('writing index file')
+    # 1) register jobs in db directory index
+    # TODO: utilizing an sqlite database or similar will simplify reruns and
+    # registering, as json cannot have tuple keys (python can)
     with open(db_dir / 'index.json', 'x') as resind_file:
         json.dump({i:item for i,item in enumerate(sorted_combinations)}, resind_file, indent=4)
 
