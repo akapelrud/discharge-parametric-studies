@@ -1,6 +1,6 @@
 
 TOPTARGETS := all clean
-SUBDIRS := InceptionStepper/. Plasma./
+SUBDIRS := InceptionStepper/. Plasma/.
 
 $(TOPTARGETS): $(SUBDIRS)
 $(SUBDIRS):
