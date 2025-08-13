@@ -21,6 +21,7 @@ from pathlib import Path
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file
+from config_util import copy_required_files
 
 
 
@@ -133,9 +134,41 @@ if __name__ == '__main__':
     sorted_table = sorted(table, key=lambda t: t[0])
 
     log.info(sorted_table)
+    enum_table = list(enumerate(sorted_table))
 
     # write voltage index
-    with
+    with open('voltage_index.json', 'x') as voltage_index_file:
+        json.dump(dict(
+            key=["voltage", "K", "particle_position"],
+            index={i:item for i,item in enum_table}
+            ),
+                  voltage_index_file, indent=4)
+
+    # create run directories, copy files, set voltage and particle positions, etc.
+    for i, row in enum_table:
+        voltage_dir = Path(f'voltage_{i:d}')
+        os.makedirs(voltage_dir, exist_ok=False)
+
+        required_files = [Path(f).name for f in structure['required_files']]
+        copy_required_files(log, required_files, voltage_dir)
+
+        # reuse the combination writing code from the configurator / config_util, by
+        # building a fake combination and parameter space:
+        keys = ['voltage']
+        comb_dict = dict(zip(keys,
+                             (  # tuple
+                                 row[0], # voltage
+                                 )
+                             ))
+        pspace = {
+                "voltage" : {
+                    "target" : voltage_dir/input_file.name,
+                    "uri" : "StreamerIntegralCriterion.potential",
+                    }
+                }
+        handle_combination(keys, pspace, comb_dict)
+
+        # update the particle positions
 
     #executable = Path("..") / \
     #        structure['program'].format(DIMENSIONALITY=structure['dim'])
