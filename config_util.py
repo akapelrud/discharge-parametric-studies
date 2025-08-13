@@ -167,7 +167,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
             commentpos = content.find('#')
             comment = ""
             if commentpos != -1:
-                comment = line[commentpos:].rstrip()
+                comment = line[commentpos+1:].rstrip()
                 content = line[:commentpos]
 
             eq_pos = content.find('=')
@@ -182,12 +182,13 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
                 found_line = True
                 newline = f'{address}={value_whitespace}{format_value(comb_dict[key])}'
                 newline_len = len(newline)
+
+                # add comment
+                comment_begin = f' # [script-altered]'
                 if commentpos != -1:
-                    if newline_len > commentpos:
-                        newline += " " + comment
-                    else:
-                        newline += f'{" "*(commentpos-newline_len)}# ' + \
-                                f'[script-altered]{comment[1:]}'
+                    if newline_len+1 <= commentpos:
+                        newline += " "*(commentpos-newline_len-1)
+                newline += comment_begin + comment
                 line = newline + '\n'
         sys.stdout.write(line)
     
