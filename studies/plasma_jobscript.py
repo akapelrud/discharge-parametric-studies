@@ -14,7 +14,7 @@ import json
 import re
 import logging
 
-import subprocess
+from subprocess import Popen, PIPE
 
 from pathlib import Path
 
@@ -22,7 +22,6 @@ from pathlib import Path
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file
 from config_util import copy_required_files, handle_combination
-
 
 
 if __name__ == '__main__':
@@ -49,7 +48,7 @@ if __name__ == '__main__':
             'module restore system',
             'module load HDF5/1.14.0-gompi-2023a'
             ]
-    p = subprocess.Popen('; '.join(commands), shell=True, executable='/bin/bash')
+    p = Popen('; '.join(commands), shell=True, executable='/bin/bash')
     while True:
         res = p.poll()
         if res is not None:
@@ -102,7 +101,7 @@ if __name__ == '__main__':
 
     # todo: change the index to a better file format (sqlite3)
     index = -1
-    for db_i, params in db_index.items():
+    for db_i, params in db_index['index'].items():
         if params == db_search_index:
             index = int(db_i)
             break
@@ -115,7 +114,7 @@ if __name__ == '__main__':
 
     db_run_path = Path('../inception_stepper')
     if 'output_dir_prefix' in db_structure:
-        db_run_path /= db_structure['output_dir_prefix'] + str(index)
+        db_run_path /= db_index['prefix'] + str(index)
     else:
         db_run_path /= 'run_' + str(index)
 
@@ -136,18 +135,24 @@ if __name__ == '__main__':
     log.info(sorted_table)
     enum_table = list(enumerate(sorted_table))
 
+    output_prefix = "voltage_"
+
     # write voltage index
-    with open('voltage_index.json', 'x') as voltage_index_file:
+    with open('index.json', 'x') as voltage_index_file:
         json.dump(dict(
             key=["voltage", "K", "particle_position"],
+            prefix=output_prefix,
             index={i:item for i,item in enum_table}
             ),
                   voltage_index_file, indent=4)
 
     # create run directories, copy files, set voltage and particle positions, etc.
     for i, row in enum_table:
-        voltage_dir = Path(f'voltage_{i:d}')
+        voltage_dir = Path(f'{output_prefix}{i:d}')
         os.makedirs(voltage_dir, exist_ok=False)
+   
+        # further symlink program executable
+        os.symlink(Path('../program'), voltage_dir / 'program')
 
         required_files = [Path(f).name for f in structure['required_files']]
         copy_required_files(log, required_files, voltage_dir)
@@ -176,17 +181,26 @@ if __name__ == '__main__':
                     }
                 }
         handle_combination(pspace, comb_dict)
+    
+    cmdstr = f'sbatch --array=0-{len(enum_table)-1} ' + \
+            f'--job-name="{structure["identifier"]}_voltage" ' + \
+            'generic_array_job_jobscript.py'
+    log.debug(f'cmd string: \'{cmdstr}\'')
+    p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
-        # update the particle positions
+    job_id = -1
+    while True: # wait until sbatch is complete
+        # try to capture the job id
+        line = p.stdout.readline()
+        if line:
+            m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
+            if m:
+                job_id = m.groupdict()['job_id']
+                with open('array_job_id', 'x') as job_id_file:
+                    job_id_file.write(job_id)
+                log.info(f"Submitted array job (for '{structure['identifier']}_voltage' "
+                         f"combination set). [slurm job id = {job_id}]")
 
-    #executable = Path("..") / \
-    #        structure['program'].format(DIMENSIONALITY=structure['dim'])
-    #cmd = f"mpirun {executable} {input_file} Random.seed={task_id:d}"
-    #log.info(f"Running inception stepper: {cmd}")
-    #p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
-    #
-    ## todo: We might want to store i.e. stderr output to the log file.
-    #while True:
-    #    res = p.poll()
-    #    if res is not None:
-    #        break
+        if p.poll() is not None:
+            break
+

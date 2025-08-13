@@ -5,7 +5,7 @@ import numpy as np
 
 inception_stepper = {
         'identifier': 'inception_stepper',
-        'job_script': 'inception_stepper_jobscript.py',
+        'job_script': 'generic_array_job_jobscript.py',
         'program': 'InceptionStepper/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'result_files': ['report.txt'],
         'output_directory': 'is_db',
@@ -32,11 +32,13 @@ plasma_study_1 = {
         'program': 'Plasma/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'required_files': [
             'master.inputs',
-            'chemistry.json',
-            'bolsig_air.dat',
+            'Plasma/chemistry.json',
+            'Plasma/detachment_rate.dat',
+            'Plasma/electron_transport_data.dat',
             'parse_report.py',
             'config_util.py',
-            'match_reaction.py'
+            'match_reaction.py',
+            'generic_array_job_jobscript.py'  # used at voltage step level
             ],
         'output_directory': 'study0',
         'output_dir_prefix':'run_',

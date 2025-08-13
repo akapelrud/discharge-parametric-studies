@@ -10,6 +10,7 @@ from pathlib import Path
 
 from match_reaction import match_requirement, match_reaction
 
+DEFAULT_OUTPUT_DIR_PREFIX = 'run_'
 
 def parse_commented_json_to_dict(filepath):
     """ Reads filepath line by line and strips all C++ style block (//) comments. Parse
@@ -232,4 +233,15 @@ def copy_required_files(log, required_files, destination):
     for file in required_files:
         shutil.copy(file, destination, follow_symlinks=True)
         log.debug(f'copying in file: {file}')
+
+
+def get_output_prefix(obj):
+    output_dir_prefix = DEFAULT_OUTPUT_DIR_PREFIX
+    if 'output_dir_prefix' in obj:
+        odp = obj['output_dir_prefix']
+        if not isinstance(odp, str):
+            raise ValueError(f"'output_dir_prefix' in structure: {ident} is not a string'")
+        output_dir_prefix = obj['output_dir_prefix']
+    return output_dir_prefix
+
 

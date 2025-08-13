@@ -268,7 +268,7 @@ ItoKMCGodunovStepper.algorithm                             = euler_maruyama     
 # ====================================================================================================
 ItoKMCJSON.verbose            = false           ## Turn on/off verbosity
 ItoKMCJSON.debug              = false           ## Turn on/off debugging
-ItoKMCJSON.chemistry_file     = simple_air_chemistry.json  ## Chemistry file. Must be supplied by the user. 
+ItoKMCJSON.chemistry_file     = chemistry.json  ## Chemistry file. Must be supplied by the user. 
 
 # Kinetic Monte Carlo solver settings. 
 ItoKMCJSON.max_new_particles  = 32              ## Maximum number of computational particles to produce in reaction step
@@ -340,7 +340,7 @@ DischargeInceptionStepper.townsend_grid_dx = 2.0		## Space step to use for Towns
 # Static mode
 DischargeInceptionStepper.voltage_lo    = 10E3                     # Low voltage multiplier
 DischargeInceptionStepper.voltage_hi    = 30E3                     # Highest voltage multiplier
-DischargeInceptionStepper.voltage_steps = 9                       # Number of voltage steps
+DischargeInceptionStepper.voltage_steps = 1                       # Number of voltage steps
 
 # Dynamic mode
 DischargeInceptionStepper.ion_transport = true                   # Turn on/off ion transport

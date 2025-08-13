@@ -24,8 +24,6 @@ import logging
 import logging.handlers
 
 LOG_SPACER_STR = '-'*40
-DEFAULT_OUTPUT_DIR_PREFIX = 'run_'
-
 
 def get_combinations(pspace, keys):
     return itertools.product(*[pspace[key]['values'] for key in keys])
@@ -139,6 +137,10 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
     req_files_in_run_dir = copy_required_files(log,
                                                obj['required_files'],
                                                res_dir)
+    # create program symlink 
+    os.symlink(
+            Path('..') / Path(obj['program'].format(DIMENSIONALITY=obj['dim'])).name,
+            res_dir / 'program')
 
     # Dump an json file with the parameter space combination.
     # This might not be needed, as the values can be found from other input
@@ -170,15 +172,6 @@ def setup_database(log, database_definition, output_dir, dim):
     log.info(LOG_SPACER_STR)
     return keys, db_dir
 
-
-def get_output_name_pattern(obj):
-    output_dir_prefix = DEFAULT_OUTPUT_DIR_PREFIX
-    if 'output_dir_prefix' in obj:
-        odp = obj['output_dir_prefix']
-        if not isinstance(odp, str):
-            raise ValueError(f"'output_dir_prefix' in structure: {ident} is not a string'")
-        output_dir_prefix = obj['output_dir_prefix']
-    return output_dir_prefix+'{i:d}'
 
 def setup_study(log, study, output_dir, dim):
     ident = study['identifier']
@@ -242,6 +235,7 @@ def setup(log,
     databases = {}
     if 'databases' in structure:
         for database in structure['databases']:
+            database['dim'] = dim
             missing_fields = verify_fields(database)
             if missing_fields:
                 raise ValueError(f'database is missing fields: {missing_fields}')
@@ -254,6 +248,7 @@ def setup(log,
                     combination_set=set())
     studies = dict()
     for study in structure['studies']:
+        study['dim'] = dim
         missing_fields = verify_fields(study)
         if missing_fields:
             raise ValueError(f'study \'{study["identifier"]}\' is missing fields: {missing_fields}')
@@ -370,7 +365,8 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
         log.warning("The number of combinations > 1000 (sigma2 limit for "
                     "array slurm array jobs")
 
-    output_name_pattern = get_output_name_pattern(structure)
+    output_prefix = get_output_prefix(structure) 
+    output_name_pattern = output_prefix + '{i:d}'
 
     log.debug(f'registering {num_jobs} jobs')
     log.debug('writing index file')
@@ -378,12 +374,16 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
     # TODO: utilizing an sqlite database or similar will simplify reruns and
     # registering, as json cannot have tuple keys (python can)
     with open(out_dir / 'index.json', 'x') as resind_file:
-        json.dump({i:item for i,item in enumerate(sorted_combinations)}, resind_file, indent=4)
+        json.dump(dict(
+            prefix=output_prefix,
+            index={i:item for i,item in enumerate(sorted_combinations)}
+            ), resind_file, indent=4)
 
     for i, combination in enumerate(sorted_combinations):
         setup_job_dir(log, structure, output_name_pattern, out_dir, i, combination)
 
-    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{out_dir}" '
+    cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{out_dir}" ' + \
+            f'--job-name="{structure["identifier"]}" '
 
     if afterok_joblist:
         cmdstr += f"--dependency=afterok:{','.join([str(j) for j in afterok_joblist])} "
