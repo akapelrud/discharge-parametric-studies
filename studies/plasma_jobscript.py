@@ -21,7 +21,7 @@ from pathlib import Path
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file
-from config_util import copy_required_files
+from config_util import copy_required_files, handle_combination
 
 
 
@@ -154,19 +154,28 @@ if __name__ == '__main__':
 
         # reuse the combination writing code from the configurator / config_util, by
         # building a fake combination and parameter space:
-        keys = ['voltage']
-        comb_dict = dict(zip(keys,
-                             (  # tuple
-                                 row[0], # voltage
-                                 )
-                             ))
+        comb_dict = dict(
+                voltage=row[0],
+                particle_position=row[2]
+                )
         pspace = {
                 "voltage" : {
-                    "target" : voltage_dir/input_file.name,
+                    "target" : voltage_dir/input_file,
                     "uri" : "StreamerIntegralCriterion.potential",
+                    },
+                "particle_position" : {
+                    "target" : voltage_dir/'chemistry.json',
+                    'uri' : [
+                        'plasma species',
+                        '+["id"="e"]', # find electrons in list
+                        'initial particles',
+                        '+["tag"="change-me"]',
+                        'gaussian distribution',  # TODO: choose in structure
+                        'center'
+                        ]
                     }
                 }
-        handle_combination(keys, pspace, comb_dict)
+        handle_combination(pspace, comb_dict)
 
         # update the particle positions
 

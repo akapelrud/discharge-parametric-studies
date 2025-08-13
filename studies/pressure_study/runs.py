@@ -34,7 +34,9 @@ plasma_study_1 = {
             'master.inputs',
             'chemistry.json',
             'bolsig_air.dat',
-            'parse_report.py'
+            'parse_report.py',
+            'config_util.py',
+            'match_reaction.py'
             ],
         'output_directory': 'study0',
         'output_dir_prefix':'run_',

@@ -83,7 +83,6 @@ if __name__ == '__main__':
     log.info(f"Running inception stepper: {cmd}")
     p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
     
-    # todo: We might want to store i.e. stderr output to the log file.
     while True:
         res = p.poll()
         if res is not None:
