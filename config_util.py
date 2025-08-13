@@ -12,6 +12,7 @@ from match_reaction import match_requirement, match_reaction
 
 DEFAULT_OUTPUT_DIR_PREFIX = 'run_'
 
+
 def parse_commented_json_to_dict(filepath):
     """ Reads filepath line by line and strips all C++ style block (//) comments. Parse
     using json module and return contents as a dict.
@@ -140,7 +141,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
     """
     warning: writes directly to input_file, search and replace mode
     """
-    if not 'uri' in pspace[key]:
+    if 'uri' not in pspace[key]:
         raise ValueError(f'No uri for input requirement: {key}')
     if not isinstance(pspace[key]['uri'], str):
         raise ValueError(f'input requirement can only be a scalar string: {key}')
@@ -153,7 +154,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
             try:
                 float(value[0])
                 isfloat = True
-            except:
+            except ValueError:
                 isfloat = False
 
             if isfloat:
@@ -179,7 +180,6 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
                 continue
             address = content[:eq_pos]
             value = content[eq_pos+1:]
-            
             value_whitespace = re.match(r'\s*', value).group()
 
             if address.strip() == uri:
@@ -188,18 +188,19 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
                 newline_len = len(newline)
 
                 # add comment
-                comment_begin = f' # [script-altered]'
+                comment_begin = ' # [script-altered]'
                 if commentpos != -1:
                     if newline_len+1 <= commentpos:
                         newline += " "*(commentpos-newline_len-1)
                 newline += comment_begin + comment
                 line = newline + '\n'
         sys.stdout.write(line)
-    
+
     if not found_line:
         with open(input_file, 'a') as in_file:
             in_file.write(f"\n{pspace[key]['uri']} = {format_value(comb_dict[key])}"
                           " #[script-added]")
+
 
 def handle_combination(pspace, comb_dict):
     log = logging.getLogger(sys.argv[0])
@@ -243,8 +244,7 @@ def get_output_prefix(obj):
     if 'output_dir_prefix' in obj:
         odp = obj['output_dir_prefix']
         if not isinstance(odp, str):
-            raise ValueError(f"'output_dir_prefix' in structure: {ident} is not a string'")
+            raise ValueError("'output_dir_prefix' in structure: " +
+                             f"'{odp}' is not a string'")
         output_dir_prefix = obj['output_dir_prefix']
     return output_dir_prefix
-
-

@@ -2,6 +2,7 @@
 
 import re
 
+
 def match_requirement(suggested):
     """Match a field requirement when dealing with a list of objects in json:
 
@@ -28,7 +29,7 @@ def match_requirement(suggested):
         type = chem_react
             :: used to indicate that the value should be treated as a
             chombo-discharge reaction equation. c.f. match_reaction function below.
-    
+
     c.f. https://chombo-discharge.github.io/chombo-discharge/Applications/ItoKMC.html#reaction-specifiers
 
     returns None or a dict with the elements
@@ -44,6 +45,7 @@ def match_requirement(suggested):
     if not m:
         return None
     return m.groupdict()
+
 
 def match_reaction(expected, suggested):
     """Match a chemical reaction according to the chombo-discharge specification:
@@ -75,6 +77,7 @@ def match_reaction(expected, suggested):
     similar = exp_lhs == sug_lhs and exp_rhs == sug_rhs
     return similar
 
+
 if __name__ == '__main__':
 
     m = match_requirement('+["reaction"=<chem_react>"Y + (O2) -> e + O2+"]')
@@ -88,4 +91,3 @@ if __name__ == '__main__':
     if m and m['type'] == 'chem_react':
         sim = match_reaction(m['value'], from_file)
         print(f'reaction spec matches file content: \'{m["value"]}\'')
-

@@ -4,19 +4,18 @@ import json
 import itertools
 import os
 import shutil
-import sqlite3
 from pathlib import Path
 import importlib.util
 import sys
 import re
 
-from collections import defaultdict
-
-from config_util import *
+from config_util import (
+        handle_combination, copy_required_files, get_output_prefix,
+        DEFAULT_OUTPUT_DIR_PREFIX
+        )
 
 from subprocess import Popen, PIPE
 import argparse
-import time
 
 import os.path
 
@@ -24,6 +23,7 @@ import logging
 import logging.handlers
 
 LOG_SPACER_STR = '-'*40
+
 
 def get_combinations(pspace, keys):
     return itertools.product(*[pspace[key]['values'] for key in keys])
@@ -66,7 +66,7 @@ def setup_env(log, obj, obj_type, output_dir, dim):
     """
     ident = obj['identifier']
     jobscript = obj['job_script']
-    
+
     out_dir = output_dir / obj['output_directory']
 
     log.info(LOG_SPACER_STR)
@@ -78,17 +78,13 @@ def setup_env(log, obj, obj_type, output_dir, dim):
     shutil.copy(obj['job_script'], out_dir, follow_symlinks=True)
     log.info(f"  * job_script: {jobscript}")
 
-    program = obj['program']
-    try:
-        program = program.format(DIMENSIONALITY=dim)
-    except:
-        pass  # ok. The program does not contain a template parameter
-   
-    shutil.copy( program, out_dir, follow_symlinks=True)
+    program = obj['program'].format(DIMENSIONALITY=dim)
+
+    shutil.copy(program, out_dir, follow_symlinks=True)
     log.info(f"  * program: {program}")
 
     copy_required_files(log, obj['required_files'], out_dir)
-    
+
     # store a copy of the parameter space used and the parse order of the keys,
     # so that this can be retrieved for postprocessing
     log.info("Structure json written to structure.json")
@@ -105,15 +101,15 @@ def clean_definition(obj_def, keys, dim):
     """ clean the obj_def specification for absolute file paths.
     """
     d = dict(
-            identifier = obj_def['identifier'],
-            job_script = Path(obj_def['job_script']).name,
-            program = Path(obj_def['program']).name,
-            required_files = [Path(f).name for f in obj_def['required_files']],
-            parameter_space = obj_def['parameter_space'],
-            space_order = list(keys),
-            dim = dim
+            identifier=obj_def['identifier'],
+            job_script=Path(obj_def['job_script']).name,
+            program=Path(obj_def['program']).name,
+            required_files=[Path(f).name for f in obj_def['required_files']],
+            parameter_space=obj_def['parameter_space'],
+            space_order=list(keys),
+            dim=dim
             )
-    
+
     output_dir_prefix = DEFAULT_OUTPUT_DIR_PREFIX
     if 'output_dir_prefix' in obj_def:
         output_dir_prefix = obj_def['output_dir_prefix']
@@ -134,10 +130,9 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
 
     # make a copy of required files to the run directory
     log.debug("Copying in required files.")
-    req_files_in_run_dir = copy_required_files(log,
-                                               obj['required_files'],
-                                               res_dir)
-    # create program symlink 
+    copy_required_files(log, obj['required_files'], res_dir)
+
+    # create program symlink
     os.symlink(
             Path('..') / Path(obj['program'].format(DIMENSIONALITY=obj['dim'])).name,
             res_dir / 'program')
@@ -160,7 +155,6 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
 
 def setup_database(log, database_definition, output_dir, dim):
     df = database_definition  # alias
-    ident = df['identifier']
 
     db_dir, program = setup_env(log, df, "database", output_dir, dim)
 
@@ -172,7 +166,6 @@ def setup_database(log, database_definition, output_dir, dim):
 
 
 def setup_study(log, study, output_dir, dim):
-    ident = study['identifier']
     st_dir, program = setup_env(log, study, "study", output_dir, dim)
 
     pspace = study['parameter_space']  # alias used below
@@ -185,16 +178,17 @@ def setup_study(log, study, output_dir, dim):
     for key, param_def in pspace.items():
         if 'database' in param_def:
             dbname = param_def['database']
-            if not dbname in db_params:
+            if dbname not in db_params:
                 db_params[dbname] = []
             db_params[dbname].append(key)
-    
+
     return keys, combinations, st_dir, db_params
+
 
 def setup(log,
           output_dir,
           run_definition,
-          structure = None,
+          structure=None,
           dim=3, verbose=False, dry_run=False):
     """ Parse the parameter space definition and create output directory structure for
     all combinations in the parameter space.
@@ -205,12 +199,12 @@ def setup(log,
 
     log.debug(structure)
 
-    if not 'studies' in structure:
+    if 'studies' not in structure:
         raise ValueError('No studies present in run definition')
 
     if not isinstance(structure['studies'], list):
         raise ValueError("'studies' should be a list")
-    
+
     log.debug(f"Creating output directory '{output_dir}' (if not exists)")
     os.makedirs(output_dir, exist_ok=False)  # yes, crap out if it exists
 
@@ -223,7 +217,7 @@ def setup(log,
                 }
         missing_fields = []
         for f in required_fields:
-            if not f in d:
+            if f not in d:
                 missing_fields.append(f)
         return missing_fields
 
@@ -244,25 +238,26 @@ def setup(log,
                     directory=db_dir,
                     keys=keys,
                     combination_set=set())
-    
+
     log.info(LOG_SPACER_STR)
     studies = dict()
     for study in structure['studies']:
         study['dim'] = dim
         missing_fields = verify_fields(study)
         if missing_fields:
-            raise ValueError(f'study \'{study["identifier"]}\' is missing fields: {missing_fields}')
+            raise ValueError(f'study \'{study["identifier"]}\' is missing fields:' +
+                             f'{missing_fields}')
         keys, combinations, st_dir, db_params = setup_study(log, study, output_dir, dim)
 
         studies[study['identifier']] = dict(
                 structure=study,
                 database_deps=db_params,
-                directory = st_dir,
+                directory=st_dir,
                 keys=keys,
                 combinations=combinations
                 )
 
-        log.debug(f"keys: {keys}") 
+        log.debug(f"keys: {keys}")
         log.debug(f"combinations: {combinations}")
 
         # Given the combination list, sort the ranks according to the order in the
@@ -280,7 +275,6 @@ def setup(log,
                                    f'parameters ({len(db_keys)}.')
 
             db_dict = databases[db_id]
-            db_structure = db_dict['structure']
             db_orig_keys = db_dict['keys']
             combination_set = db_dict['combination_set']
 
@@ -292,10 +286,10 @@ def setup(log,
 
             # resort to original database order, see above
             sorted_indices = [indices[i] for i in order]
-            
+
             # 2) extract subset of combinations for the database parameters
             db_combinations = {tuple(comb[i] for i in sorted_indices)
-                                         for comb in combinations}
+                               for comb in combinations}
             log.debug(f'db \'{db_id}\', combs: {db_combinations}')
 
             # add to combination set for db
@@ -309,8 +303,8 @@ def setup(log,
             # for j,comb in enumerate(combinations):
             #     db_key = tuple(comb[i] for i in indices)
             #     # store the whole combinations with the original enumeration id
-            #     # this id corresponds with the folder id of the combination generated by the
-            #     # setup_study routine.
+            #     # this id corresponds with the folder id of the combination
+            #     # generated by the setup_study routine.
             #     grouped_combinations[db_key].append((j,comb))
             # log.debug(grouped_combinations)
 
@@ -319,8 +313,8 @@ def setup(log,
     # fire of db slurm jobs
     for db_id, db in databases.items():
         db['job_id'] = schedule_slurm_jobs(log, db['structure'],
-                                              db['directory'],
-                                              sorted(db['combination_set']))
+                                           db['directory'],
+                                           sorted(db['combination_set']))
     log.info(LOG_SPACER_STR)
 
     # start dependent slurm array jobs
@@ -337,7 +331,7 @@ def setup(log,
                     Path('..')/db['directory'].relative_to(study['directory'].parent),
                     study['directory'] / db_id,
                     target_is_directory=True)
-            
+
             # add slurm dependency
             dep_joblist.append(db['job_id'])
 
@@ -347,14 +341,16 @@ def setup(log,
                             study['combinations'],
                             afterok_joblist=dep_joblist)
     log.info(LOG_SPACER_STR)
-    
+
     return
 
 
-def get_sort_order(sl, l):
-    """ Get the sorting order (indices) for list sl to match the order in l
+def get_sort_order(sort_list, orig_list):
+    """ Get the sorting order (indices) for list sortlist to match the order in
+    orig_list
     """
-    return [i[0] for i in sorted(enumerate(sl), key=lambda x:l.index(x[1]))]
+    return [i[0] for i in sorted(enumerate(sort_list),
+                                 key=lambda x: orig_list.index(x[1]))]
 
 
 def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
@@ -366,7 +362,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
         log.warning("The number of combinations > 1000 (sigma2 limit for "
                     "array slurm array jobs")
 
-    output_prefix = get_output_prefix(structure) 
+    output_prefix = get_output_prefix(structure)
     output_name_pattern = output_prefix + '{i:d}'
 
     log.debug(f'registering {num_jobs} jobs')
@@ -377,7 +373,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
     with open(out_dir / 'index.json', 'x') as resind_file:
         json.dump(dict(
             prefix=output_prefix,
-            index={i:item for i,item in enumerate(sorted_combinations)}
+            index={i: item for i, item in enumerate(sorted_combinations)}
             ), resind_file, indent=4)
 
     for i, combination in enumerate(sorted_combinations):
@@ -394,7 +390,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
     job_id = -1
-    while True: # wait until sbatch is complete
+    while True:  # wait until sbatch is complete
         # try to capture the job id
         line = p.stdout.readline()
         if line:
@@ -410,6 +406,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
             break
 
     return job_id
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -432,7 +429,8 @@ def main():
     parser.add_argument("--dim", default=3, type=int,
                         help="dimensionality of simulations")
     parser.add_argument("--dry-run", action="store_true",
-                        help="Don't run any mpi simulations, only create folder structures.")
+                        help="Don't run any mpi simulations, only create folder "
+                        "structures.")
 
     args = parser.parse_args()
 
@@ -453,9 +451,8 @@ def main():
         fh.doRollover()
 
     # set up database and study directory structures
-    setup_result = setup(log, args.output_dir, args.run_definition, dim=args.dim,
+    setup(log, args.output_dir, args.run_definition, dim=args.dim,
                          verbose=args.verbose, dry_run=args.dry_run)
-
 
 
 if __name__ == '__main__':
