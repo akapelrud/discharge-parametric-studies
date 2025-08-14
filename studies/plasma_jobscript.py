@@ -20,8 +20,8 @@ from pathlib import Path
 
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
-from parse_report import parse_report_file
-from config_util import copy_required_files, handle_combination
+from parse_report import parse_report_file  # noqa: E402
+from config_util import copy_required_files, handle_combination  # noqa: E402
 
 
 if __name__ == '__main__':
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     sh.setFormatter(formatter)
     log.addHandler(sh)
     log.setLevel(logging.INFO)
-    
+
     S_ENV = 'SLURM_ARRAY_TASK_ID'
     if S_ENV not in os.environ:
         raise RuntimeError(f'${S_ENV} not found in os.environ[]. Run this'
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     dname = [f for f in os.listdir() if (os.path.isdir(f) and re.match(dpattern, f))][0]
     log.info(f'chdir: {dname}')
     os.chdir(dname)
-    
+
     input_file = None
     for f in os.listdir():
         if os.path.isfile(f) and f.endswith('.inputs'):
@@ -84,11 +84,11 @@ if __name__ == '__main__':
     with open('../inception_stepper/structure.json') as db_structure_file:
         db_structure = json.load(db_structure_file)
 
-    if not 'space_order' in db_structure:
+    if 'space_order' not in db_structure:
         raise ValueError("missing field 'space_order' in database 'inception_stepper'")
 
     db_param_order = db_structure['space_order']
-    
+
     with open('parameters.json') as param_file:
         parameters = json.load(param_file)
 
@@ -107,7 +107,8 @@ if __name__ == '__main__':
             break
 
     if index < 0:
-        raise RuntimeError(f'Unable to find db parameter_set: {db_param_order} = {db_search_index}')
+        raise RuntimeError(f'Unable to find db parameter_set: {db_param_order} = ' +
+                           f'{db_search_index}')
 
     log.info(f"Found database parameters {db_param_order} = {db_search_index} "
              f"at index: {index}")
@@ -119,11 +120,11 @@ if __name__ == '__main__':
         db_run_path /= 'run_' + str(index)
 
     report_data = parse_report_file(db_run_path / 'report.txt',
-                              ['+/- Voltage',
-                               'Max K(+)',
-                               'Max K(-)',
-                               'Pos. max K(+)',
-                               'Pos. max K(-)'])
+                                    ['+/- Voltage',
+                                     'Max K(+)',
+                                     'Max K(-)',
+                                     'Pos. max K(+)',
+                                     'Pos. max K(-)'])
     report_data = report_data[1]
     # split positive and negative potential data
     table = []
@@ -142,7 +143,7 @@ if __name__ == '__main__':
         json.dump(dict(
             key=["voltage", "K", "particle_position"],
             prefix=output_prefix,
-            index={i:item for i,item in enum_table}
+            index={i: item for i, item in enum_table}
             ),
                   voltage_index_file, indent=4)
 
@@ -150,7 +151,7 @@ if __name__ == '__main__':
     for i, row in enum_table:
         voltage_dir = Path(f'{output_prefix}{i:d}')
         os.makedirs(voltage_dir, exist_ok=False)
-   
+
         # further symlink program executable
         os.symlink(Path('../program'), voltage_dir / 'program')
 
@@ -165,15 +166,15 @@ if __name__ == '__main__':
                 )
         distribution_type = 'gaussian distribution'
         pspace = {
-                "voltage" : {
-                    "target" : voltage_dir/input_file,
-                    "uri" : "StreamerIntegralCriterion.potential",
+                "voltage": {
+                    "target": voltage_dir/input_file,
+                    "uri": "StreamerIntegralCriterion.potential",
                     },
-                "particle_position" : {
-                    "target" : voltage_dir/'chemistry.json',
-                    'uri' : [
+                "particle_position": {
+                    "target": voltage_dir/'chemistry.json',
+                    'uri': [
                         'plasma species',
-                        '+["id"="e"]', # find electrons in list
+                        '+["id"="e"]',  # find electrons in list
                         'initial particles',
                         f'+["{distribution_type}"]',
                         distribution_type,  # TODO: fix duplicity here
@@ -182,7 +183,7 @@ if __name__ == '__main__':
                     }
                 }
         handle_combination(pspace, comb_dict)
-    
+
     cmdstr = f'sbatch --array=0-{len(enum_table)-1} ' + \
             f'--job-name="{structure["identifier"]}_voltage" ' + \
             'generic_array_job_jobscript.py'
@@ -190,7 +191,7 @@ if __name__ == '__main__':
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
     job_id = -1
-    while True: # wait until sbatch is complete
+    while True:  # wait until sbatch is complete
         # try to capture the job id
         line = p.stdout.readline()
         if line:
@@ -199,9 +200,8 @@ if __name__ == '__main__':
                 job_id = m.groupdict()['job_id']
                 with open('array_job_id', 'x') as job_id_file:
                     job_id_file.write(job_id)
-                log.info(f"Submitted array job (for '{structure['identifier']}_voltage' "
-                         f"combination set). [slurm job id = {job_id}]")
+                log.info(f"Submitted array job (for '{structure['identifier']}" +
+                         f"_voltage' combination set). [slurm job id = {job_id}]")
 
         if p.poll() is not None:
             break
-
