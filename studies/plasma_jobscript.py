@@ -21,7 +21,10 @@ from pathlib import Path
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file  # noqa: E402
-from config_util import copy_required_files, handle_combination  # noqa: E402
+from config_util import (  # noqa: E402
+                         copy_required_files, handle_combination,
+                         DEFAULT_OUTPUT_DIR_PREFIX
+                         )
 
 
 if __name__ == '__main__':
@@ -70,6 +73,8 @@ if __name__ == '__main__':
     log.info(f'chdir: {dname}')
     os.chdir(dname)
 
+    # locate .inputs file (should be in the required_files list, and copied to the
+    # current directory):
     input_file = None
     for f in os.listdir():
         if os.path.isfile(f) and f.endswith('.inputs'):
@@ -77,16 +82,15 @@ if __name__ == '__main__':
             break
     if not input_file:
         raise ValueError('missing *.inputs file in run directory')
-
     log.info(f"input file: {input_file}")
 
     # get inception stepper run_directory
     with open('../inception_stepper/structure.json') as db_structure_file:
         db_structure = json.load(db_structure_file)
 
+    # determine order of parameters (might differ from the order in this study)
     if 'space_order' not in db_structure:
         raise ValueError("missing field 'space_order' in database 'inception_stepper'")
-
     db_param_order = db_structure['space_order']
 
     with open('parameters.json') as param_file:
@@ -99,25 +103,24 @@ if __name__ == '__main__':
     with open('../inception_stepper/index.json') as db_index_file:
         db_index = json.load(db_index_file)
 
-    # todo: change the index to a better file format (sqlite3)
+    # linear search through index, which is a dictionary.
+    # TODO: change the index to a better file format (sqlite3)
     index = -1
     for db_i, params in db_index['index'].items():
         if params == db_search_index:
             index = int(db_i)
             break
-
     if index < 0:
         raise RuntimeError(f'Unable to find db parameter_set: {db_param_order} = ' +
                            f'{db_search_index}')
-
     log.info(f"Found database parameters {db_param_order} = {db_search_index} "
              f"at index: {index}")
 
     db_run_path = Path('../inception_stepper')
-    if 'output_dir_prefix' in db_structure:
+    if 'prefix' in db_index:
         db_run_path /= db_index['prefix'] + str(index)
     else:
-        db_run_path /= 'run_' + str(index)
+        db_run_path /= DEFAULT_OUTPUT_DIR_PREFIX + str(index)
 
     report_data = parse_report_file(db_run_path / 'report.txt',
                                     ['+/- Voltage',
