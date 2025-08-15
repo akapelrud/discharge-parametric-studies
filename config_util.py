@@ -8,7 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from match_reaction import match_requirement, match_reaction
+from json_requirement import match_requirement, match_reaction
 
 DEFAULT_OUTPUT_DIR_PREFIX = 'run_'
 
