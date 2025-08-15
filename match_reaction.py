@@ -3,41 +3,63 @@
 import re
 
 
-def match_requirement(suggested):
-    """Match a field requirement when dealing with a list of objects in json:
+def match_requirement(suggested: str):
+    """Match a field requirement when dealing with a list of objects in json.
 
+    Parameters
+    ----------
+    suggested : str
+        string following the documented requirement format:
+            '+["some_field"=<parse_type>"some_value"]'
+            '*["some_field"=<parse_type>"some_value"]'
+        where the rhs '=<type>"value"' part is optional.
+            - This function does not do anything special with the parse_type, field or value
+            - For this function there is no difference between *[] and +[], but the
+              intention is for the user code to discriminate between optional (*) and
+              hard requirement (+).
+
+    Returns
+    -------
+    dict or None
+        req_type: '*' or '+'
+        field: 'some_field'
+            not None
+        type: 'parse_type'
+            str or None
+        value: 'some_value'
+            str or None
+
+    Example
+    -------
+    Given a 
     [
         {
-            'some-field':'value'
+            'some_field':'value'
         },
         {
-            'some-other-field':'value'
+            'some_field':'other_value'
+        },
+        {
+            'some_other_field':'third_value'
         }
     ]
 
-    match_requirement('+["some-field"=<type>"value"]')
-    match_requirement('*["some-field"=<type>"value"]')
+    The intention is to be able to specify the first list element with the requirement
+    specifier: '+["some_field"]'.
+    If a specific field is needed, the value can be matched:
+    '+["some_field"="other_value"]
 
-    For this function there is no difference between *[] and +[], but the
-    intention is for the user code to discriminate between optional (*) and
-    hard requirement (+).
-
-    The rhs '=<type>"value"' part is optional.
+    Notes
+    -----
 
     The type field is optional and can be used to indicate special parsing.:
-
         type = chem_react
             :: used to indicate that the value should be treated as a
             chombo-discharge reaction equation. c.f. match_reaction function below.
 
     c.f. https://chombo-discharge.github.io/chombo-discharge/Applications/ItoKMC.html#reaction-specifiers
 
-    returns None or a dict with the elements
-        'field'
-        'value'
-        'type': None|str
     """
-
     pattern = r'^(?P<req_type>\+|\*)\[\s*\"(?P<field>.+?)\"\s*' + \
             r'(?:=\s*(?:<(?P<type>.+?)?>)?\s*\"(?P<value>.+?)\")?' + \
             r'\s*\]$'
@@ -48,7 +70,8 @@ def match_requirement(suggested):
 
 
 def match_reaction(expected, suggested):
-    """Match a chemical reaction according to the chombo-discharge specification:
+    """Match a chemical reaction according to the chombo-discharge specification
+
     c.f. https://chombo-discharge.github.io/chombo-discharge/Applications/ItoKMC.html#reaction-specifiers
 
     The order of the reactants on the lhs and rhs are not important.
