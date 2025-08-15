@@ -373,6 +373,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
     with open(out_dir / 'index.json', 'x') as resind_file:
         json.dump(dict(
             prefix=output_prefix,
+            keys =list(structure['parameter_space'].keys()),
             index={i: item for i, item in enumerate(sorted_combinations)}
             ), resind_file, indent=4)
 
