@@ -5,12 +5,17 @@ StreamerIntegralCriterion.potential = -80000
 StreamerIntegralCriterion.basename  = pout
 
 # ====================================================================================================
+# ItoKMCBackgroundEvaluator class options
+# ====================================================================================================
+ItoKMCBackgroundEvaluator.exit_crit = 0.1   # percentage change in field due to space charge before stopping simulation
+
+# ====================================================================================================
 # AmrMesh class options
 # ====================================================================================================
 AmrMesh.lo_corner        = -6E-2 0  -6E-2    ## Low corner of problem domain
 AmrMesh.hi_corner        =  6E-2 45E-3  6E-2 ## High corner of problem domain
 AmrMesh.verbosity        = -1                ## Controls verbosity. 
-AmrMesh.coarsest_domain  = 128 48 128      ## Number of cells on coarsest domain
+AmrMesh.coarsest_domain  = 128 48 128        ## Number of cells on coarsest domain
 AmrMesh.max_amr_depth    = 8                 ## Maximum amr depth
 AmrMesh.max_sim_depth    = -1                ## Maximum simulation depth
 AmrMesh.fill_ratio       = 1.0               ## Fill ratio for grid generation
