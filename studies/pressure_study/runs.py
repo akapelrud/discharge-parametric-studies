@@ -8,6 +8,9 @@ inception_stepper = {
         'job_script': 'generic_array_job_jobscript.py',
         'program': 'InceptionStepper/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'output_directory': 'is_db',
+        'job_script_dependencies': [
+            'generic_array_job.sh'
+            ],
         'required_files': [
             'master.inputs',
             'InceptionStepper/transport_data.txt'
@@ -29,6 +32,8 @@ plasma_study_1 = {
         'program': 'Plasma/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'job_script': 'plasma_jobscript.py',
         'job_script_dependencies': [
+            'generic_array_job.sh',
+            'plasma_visit_plotscript.py',
             'parse_report.py',
             'config_util.py',
             'json_requirement.py',
@@ -38,6 +43,7 @@ plasma_study_1 = {
             'Plasma/chemistry.json',
             'Plasma/detachment_rate.dat',
             'Plasma/electron_transport_data.dat',
+            'generic_array_job.sh',  # used at voltage step level
             'generic_array_job_jobscript.py'  # used at voltage step level
             ],
         'output_directory': 'study0',
@@ -47,7 +53,7 @@ plasma_study_1 = {
                 "database": "inception_stepper",  # database dependency
                 "target": "master.inputs",
                 "uri": "Vessel.rod_radius",
-                "values": [1e-3]
+                "values": [1e-3] #, 2e-3, 3e-3]
                 },
             "pressure": {
                 "database": "inception_stepper",  # database dependency

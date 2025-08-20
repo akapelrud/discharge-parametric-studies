@@ -1,13 +1,5 @@
 #!/usr/bin/env python
 
-#SBATCH --account=nn12041k
-#SBATCH --nodes=4 --ntasks-per-node=128
-#SBATCH --time=0-00:10:00
-#SBATCH --partition=normal
-#SBATCH --time=0-00:10:00
-#SBATCH --output=R-%x.%A-%a.out
-#SBATCH --error=R-%x.%A-%a.err
-
 import os
 import sys
 import json
@@ -43,20 +35,6 @@ if __name__ == '__main__':
                            ' script through sbatch --array=... !!')
     task_id = int(os.environ['SLURM_ARRAY_TASK_ID'])
     log.info(f'found task id: {task_id}')
-
-    # SET UP sigma2 MODULES HERE
-    commands = [
-            'set -o errexit',
-            'set -o nounset',
-            'module restore system',
-            'module load foss/2023a'
-            'module load HDF5/1.14.0-gompi-2023a'
-            ]
-    p = Popen('; '.join(commands), shell=True, executable='/bin/bash')
-    while True:
-        res = p.poll()
-        if res is not None:
-            break
 
     with open('structure.json') as structure_file:
         structure = json.load(structure_file)
@@ -153,6 +131,9 @@ if __name__ == '__main__':
             ),
                   voltage_index_file, indent=4)
 
+    # recreate the generic job-script symlink, so that the actual .sh jobscript work:
+    os.symlink('generic_array_job_jobscript.py', 'jobscript_symlink')
+
     # create run directories, copy files, set voltage and particle positions, etc.
     for i, row in enum_table:
         voltage_dir = Path(f'{output_prefix}{i:d}')
@@ -192,7 +173,7 @@ if __name__ == '__main__':
 
     cmdstr = f'sbatch --array=0-{len(enum_table)-1} ' + \
             f'--job-name="{structure["identifier"]}_voltage" ' + \
-            'generic_array_job_jobscript.py'
+            'generic_array_job.sh'
     log.debug(f'cmd string: \'{cmdstr}\'')
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 

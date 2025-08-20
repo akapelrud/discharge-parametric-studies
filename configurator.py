@@ -77,6 +77,7 @@ def setup_env(log, obj, obj_type, output_dir, dim):
 
     shutil.copy(obj['job_script'], out_dir, follow_symlinks=True)
     log.info(f"  * job_script: {jobscript}")
+    os.symlink(Path(obj['job_script']).name, out_dir / 'jobscript_symlink')
 
     program = obj['program'].format(DIMENSIONALITY=dim)
 
@@ -396,7 +397,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
     if afterok_joblist:
         cmdstr += f"--dependency=afterok:{','.join([str(j) for j in afterok_joblist])} "
 
-    cmdstr += f'{structure["job_script"]}'
+    cmdstr += f'generic_array_job.sh'
     log.debug(f'cmd string: \'{cmdstr}\'')
     p = Popen(cmdstr, shell=True, stdout=PIPE, encoding='utf-8')
 
