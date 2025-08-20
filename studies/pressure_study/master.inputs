@@ -7,7 +7,7 @@ StreamerIntegralCriterion.basename  = pout
 # ====================================================================================================
 # ItoKMCBackgroundEvaluator class options
 # ====================================================================================================
-ItoKMCBackgroundEvaluator.exit_crit = 0.1   # percentage change in field due to space charge before stopping simulation
+ItoKMCBackgroundEvaluator.exit_crit = 0.05   ## percentage per cell change in field due to space charge before stopping simulation
 
 # ====================================================================================================
 # AmrMesh class options
@@ -40,36 +40,36 @@ AmrMesh.redist_radius    = 1                 ## Redistribution radius for hyperb
 # ====================================================================================================
 # Driver class options
 # ====================================================================================================
-Driver.verbosity                       = 2                # Engine verbosity
-Driver.geometry_generation             = chombo-discharge # Grid generation method, 'chombo-discharge' or 'chombo'
-Driver.geometry_scan_level             = 0                # Geometry scan level for chombo-discharge geometry generator
-Driver.ebis_memory_load_balance        = false            # If using Chombo geo-gen, use memory as loads for EBIS generation  
-Driver.output_dt                       = -1.0             # Output interval (values <= 0 enforces step-based output)
-Driver.plot_interval                   = 10               # Plot interval
-Driver.checkpoint_interval             = -1               # Checkpoint interval
-Driver.regrid_interval                 = 5                # Regrid interval
-Driver.write_regrid_files              = false            # Write regrid files or not.
-Driver.write_restart_files             = false            # Write restart files or not
-Driver.initial_regrids                 = 8                # Number of initial regrids
-Driver.do_init_load_balance            = false            # If true, load balance the first step in a fresh simulation.
-Driver.start_time                      = 0                # Start time (fresh simulations only)
-Driver.stop_time                       = 1.0              # Stop time
-Driver.max_steps                       = 100              # Maximum number of steps
-Driver.geometry_only                   = false            # Special option that ONLY plots the geometry
-Driver.write_memory                    = false            # Write MPI memory report
-Driver.write_loads                     = false            # Write (accumulated) computational loads
-Driver.output_directory                = ./               # Output directory
-Driver.output_names                    = simulation       # Simulation output names
-Driver.max_plot_depth                  = -1               # Restrict maximum plot depth (-1 => finest simulation level)
-Driver.max_chk_depth                   = -1               # Restrict chechkpoint depth (-1 => finest simulation level)	
-Driver.num_plot_ghost                  = 1                # Number of ghost cells to include in plots
-Driver.plt_vars                        = levelset         # 'tags', 'mpi_rank', 'levelset', 'loads'
-Driver.restart                         = 0                # Restart step (less or equal to 0 implies fresh simulation)
-Driver.allow_coarsening                = true             # Allows removal of grid levels according to CellTagger
-Driver.grow_geo_tags                   = 2                # How much to grow tags when using geometry-based refinement. 
-Driver.refine_angles                   = 45.              # Refine cells if angle between elements exceed this value.
-Driver.refine_electrodes               = 0                # Refine electrode surfaces. -1 => equal to refine_geometry
-Driver.refine_dielectrics              = 0                # Refine dielectric surfaces. -1 => equal to refine_geometry
+Driver.verbosity                       = 2                ## Engine verbosity
+Driver.geometry_generation             = chombo-discharge ## Grid generation method, 'chombo-discharge' or 'chombo'
+Driver.geometry_scan_level             = 0                ## Geometry scan level for chombo-discharge geometry generator
+Driver.ebis_memory_load_balance        = false            ## If using Chombo geo-gen, use memory as loads for EBIS generation  
+Driver.output_dt                       = -1.0             ## Output interval (values <= 0 enforces step-based output)
+Driver.plot_interval                   = 10               ## Plot interval
+Driver.checkpoint_interval             = 1000             ## Checkpoint interval
+Driver.regrid_interval                 = 5                ## Regrid interval
+Driver.write_regrid_files              = false            ## Write regrid files or not.
+Driver.write_restart_files             = false            ## Write restart files or not
+Driver.initial_regrids                 = 8                ## Number of initial regrids
+Driver.do_init_load_balance            = false            ## If true, load balance the first step in a fresh simulation.
+Driver.start_time                      = 0                ## Start time (fresh simulations only)
+Driver.stop_time                       = 1.0              ## Stop time
+Driver.max_steps                       = 1000             ## Maximum number of steps
+Driver.geometry_only                   = false            ## Special option that ONLY plots the geometry
+Driver.write_memory                    = false            ## Write MPI memory report
+Driver.write_loads                     = false            ## Write (accumulated) computational loads
+Driver.output_directory                = ./               ## Output directory
+Driver.output_names                    = simulation       ## Simulation output names
+Driver.max_plot_depth                  = -1               ## Restrict maximum plot depth (-1 => finest simulation level)
+Driver.max_chk_depth                   = -1               ## Restrict chechkpoint depth (-1 => finest simulation level)	
+Driver.num_plot_ghost                  = 1                ## Number of ghost cells to include in plots
+Driver.plt_vars                        = levelset         ## 'tags', 'mpi_rank', 'levelset', 'loads'
+Driver.restart                         = 0                ## Restart step (less or equal to 0 implies fresh simulation)
+Driver.allow_coarsening                = true             ## Allows removal of grid levels according to CellTagger
+Driver.grow_geo_tags                   = 2                ## How much to grow tags when using geometry-based refinement. 
+Driver.refine_angles                   = 45.              ## Refine cells if angle between elements exceed this value.
+Driver.refine_electrodes               = 0                ## Refine electrode surfaces. -1 => equal to refine_geometry
+Driver.refine_dielectrics              = 0                ## Refine dielectric surfaces. -1 => equal to refine_geometry
 
 
 # ====================================================================================================
@@ -142,22 +142,22 @@ FieldSolverMultigrid.gmg_smoother      = red_black         # Relaxation type. 'j
 # ====================================================================================================
 # ItoSolver class options
 # ====================================================================================================
-ItoSolver.verbosity           = -1              ## Class verbosity
-ItoSolver.merge_algorithm     = equal_weight_kd ## Particle merging algorithm. Either 'reinitialize' or 'equal_weight_kd'
-ItoSolver.plt_vars            = phi vel dco     ## 'phi', 'vel', 'dco', 'part', 'eb_part', 'dom_part', 'src_part', 'energy_density', 'energy'
-ItoSolver.intersection_alg    = bisection       ## Intersection algorithm for EB-particle intersections.
-ItoSolver.bisect_step         = 1.E-4           ## Bisection step length for intersection tests
-ItoSolver.normal_max          = 5.0             ## Maximum value (absolute) that can be drawn from the exponential distribution.
-ItoSolver.redistribute        = false           ## Turn on/off redistribution. 
-ItoSolver.blend_conservation  = false           ## Turn on/off blending with nonconservative divergenceo
-ItoSolver.checkpointing       = particles       ## 'particles' or 'numbers'
-ItoSolver.ppc_restart         = 32              ## Maximum number of computational particles to generate for restarts.
-ItoSolver.irr_ngp_deposition  = true            ## Force irregular deposition in cut cells or not
-ItoSolver.irr_ngp_interp      = true            ## Force irregular interpolation in cut cells or not
-ItoSolver.mobility_interp     = direct          ## How to interpolate mobility, 'direct' or 'velocity', i.e. either mu_p = mu(X_p) or mu_p = (mu*E)(X_p)/E(X_p)
-ItoSolver.plot_deposition     = cic             ## Cloud-in-cell for plotting particles.
-ItoSolver.deposition          = cic             ## Deposition type. 
-ItoSolver.deposition_cf       = halo            ## Coarse-fine deposition. interp, halo, or halo_ngp
+ItoSolver.verbosity           = -1               ## Class verbosity
+ItoSolver.merge_algorithm     = reinitialize_bvh ## Particle merging algorithm. Either 'reinitialize' or 'equal_weight_kd'
+ItoSolver.plt_vars            = phi vel dco      ## 'phi', 'vel', 'dco', 'part', 'eb_part', 'dom_part', 'src_part', 'energy_density', 'energy'
+ItoSolver.intersection_alg    = bisection        ## Intersection algorithm for EB-particle intersections.
+ItoSolver.bisect_step         = 1.E-4            ## Bisection step length for intersection tests
+ItoSolver.normal_max          = 5.0              ## Maximum value (absolute) that can be drawn from the exponential distribution.
+ItoSolver.redistribute        = false            ## Turn on/off redistribution. 
+ItoSolver.blend_conservation  = false            ## Turn on/off blending with nonconservative divergenceo
+ItoSolver.checkpointing       = particles        ## 'particles' or 'numbers'
+ItoSolver.ppc_restart         = 32               ## Maximum number of computational particles to generate for restarts.
+ItoSolver.irr_ngp_deposition  = true             ## Force irregular deposition in cut cells or not
+ItoSolver.irr_ngp_interp      = true             ## Force irregular interpolation in cut cells or not
+ItoSolver.mobility_interp     = direct           ## How to interpolate mobility, 'direct' or 'velocity', i.e. either mu_p = mu(X_p) or mu_p = (mu*E)(X_p)/E(X_p)
+ItoSolver.plot_deposition     = cic              ## Cloud-in-cell for plotting particles.
+ItoSolver.deposition          = cic              ## Deposition type. 
+ItoSolver.deposition_cf       = halo             ## Coarse-fine deposition. interp, halo, or halo_ngp
 
 
 # ====================================================================================================
@@ -216,7 +216,7 @@ GeoCoarsener.box1_inv    = false        # Remove except inside box (true)
 Vessel.use_rod       = true           # Rod is on/off
 Vessel.use_shroom    = false          # Plate is on/off
 
-Vessel.rod_point     = 0. 25E-3       # Rod center point
+Vessel.rod_point     = 0. 20E-3       # Rod center point
 Vessel.rod_radius    = 10E-3          # Rod radius
 
 Vessel.shroom_point  = 0. 0. -0.5     # Mushroom center point
@@ -239,9 +239,9 @@ ItoKMCGodunovStepper.redistribute_cdr                      = true               
 ItoKMCGodunovStepper.limit_parallel_diffusion              = false                ## If true, particles do not diffuse against their drift direction
 ItoKMCGodunovStepper.profile                               = false                ## Turn on/off run-time profiling
 ItoKMCGodunovStepper.plt_vars                              = current_density      ## 'conductivity', 'current_density', 'particles_per_patch'
-ItoKMCGodunovStepper.dual_grid                             = true                 ## Turn on/off dual-grid functionality
+ItoKMCGodunovStepper.dual_grid                             = false                ## Turn on/off dual-grid functionality
 ItoKMCGodunovStepper.load_balance_fluid                    = false                ## Turn on/off fluid realm load balancing.
-ItoKMCGodunovStepper.load_balance_particles                = true                 ## Turn on/off particle load balancing
+ItoKMCGodunovStepper.load_balance_particles                = false                ## Turn on/off particle load balancing
 ItoKMCGodunovStepper.load_indices                          = -1                   ## Which particle containers to use for load balancing (-1 => all)
 ItoKMCGodunovStepper.load_per_cell                         = 1.0                  ## Default load per grid cell.
 ItoKMCGodunovStepper.box_sorting                           = morton               ## Box sorting when load balancing
@@ -249,8 +249,8 @@ ItoKMCGodunovStepper.particles_per_cell                    = 64                 
 ItoKMCGodunovStepper.merge_interval                        = 1                    ## Time steps between superparticle merging
 ItoKMCGodunovStepper.regrid_superparticles                 = false                ## Make superparticles during regrids
 ItoKMCGodunovStepper.physics_dt_factor                     = 1.0                  ## Physics-based time step factor
-ItoKMCGodunovStepper.min_particle_advection_cfl            = 0.0                  ## Advective time step CFL restriction
-ItoKMCGodunovStepper.max_particle_advection_cfl            = 2.0                  ## Advective time step CFL restriction
+ItoKMCGodunovStepper.min_particle_advection_cfl            = 0.1                  ## Advective time step CFL restriction
+ItoKMCGodunovStepper.max_particle_advection_cfl            = 5.0                  ## Advective time step CFL restriction
 ItoKMCGodunovStepper.min_particle_diffusion_cfl            = 0.0                  ## Diffusive time step CFL restriction
 ItoKMCGodunovStepper.max_particle_diffusion_cfl            = 1.E99                ## Diffusive time step CFL restriction
 ItoKMCGodunovStepper.min_particle_advection_diffusion_cfl  = 0.0                  ## Advection-diffusion time step CFL restriction
@@ -303,11 +303,11 @@ ItoKMCStreamerTagger.plot              = false        # Turn on/off plotting of 
 ItoKMCStreamerTagger.num_tag_boxes     = 0            # Number of allowed tag boxes (0 = tags allowe everywhere)
 ItoKMCStreamerTagger.tag_box1_lo       = 0.0 0.0 0.0  # Only allow tags that fall between
 ItoKMCStreamerTagger.tag_box1_hi       = 0.0 0.0 0.0  # these two corners
-ItoKMCStreamerTagger.buffer            = 0            # Grow tagged cells
+ItoKMCStreamerTagger.buffer            = 8            # Grow tagged cells
 
-ItoKMCStreamerTagger.refine_curvature  = 10.0         # Curvature refinement
-ItoKMCStreamerTagger.coarsen_curvature = 10.0         # Curvature coarsening	
-ItoKMCStreamerTagger.refine_alpha      = 2.0          # Set alpha refinement. Lower  => More mesh
+ItoKMCStreamerTagger.refine_curvature  = 1.0e99       # Curvature refinement
+ItoKMCStreamerTagger.coarsen_curvature = 1.0e99       # Curvature coarsening	
+ItoKMCStreamerTagger.refine_alpha      = 1.0          # Set alpha refinement. Lower  => More mesh
 ItoKMCStreamerTagger.coarsen_alpha     = 0.1          # Set alpha coarsening. Higher => Less mesh
 ItoKMCStreamerTagger.max_coarsen_lvl   = 0            # Set max coarsening depth
 
@@ -331,15 +331,15 @@ TracerParticleSolver.volume_scale  = false  # If true, depositions yield density
 # ====================================================================================================
 # DischargeInceptionStepper class options
 # ====================================================================================================
-DischargeInceptionStepper.verbosity     = -1                            # Chattiness.
+DischargeInceptionStepper.verbosity     = -1                    # Chattiness.
 DischargeInceptionStepper.profile       = false
 DischargeInceptionStepper.full_integration          = true
-DischargeInceptionStepper.mode          = stationary                     # Mode (stationary or transient)
-DischargeInceptionStepper.eval_townsend    = true                    ## Evaluate Townsend criterion or not (only for stationary)
+DischargeInceptionStepper.mode          = stationary            # Mode (stationary or transient)
+DischargeInceptionStepper.eval_townsend    = true               ## Evaluate Townsend criterion or not (only for stationary)
 DischargeInceptionStepper.inception_alg    = trapz              ## Integration algorithm. Either euler or trapz
-DischargeInceptionStepper.output_file   = report.txt                    # Output file
-DischargeInceptionStepper.K_inception   = 10                            # User-specified inception value
-DischargeInceptionStepper.plt_vars      = K ions Uinc bg_rate detachment alpha eta field poisson tracer cdr # Plot variables
+DischargeInceptionStepper.output_file   = report.txt            # Output file
+DischargeInceptionStepper.K_inception   = 10                    # User-specified inception value
+DischargeInceptionStepper.plt_vars      = K inc alpha eta field poisson ## Plot variables
 
 # Particle integration controls
 DischargeInceptionStepper.min_phys_dx      = 1.E-10		## Minimum permitted physical step size
@@ -351,19 +351,19 @@ DischargeInceptionStepper.grad_alpha_dx    = 0.1		## Maximum step size relative 
 DischargeInceptionStepper.townsend_grid_dx = 2.0		## Space step to use for Townsend tracking
 
 # Static mode
-DischargeInceptionStepper.voltage_lo    = 10E3                     # Low voltage multiplier
-DischargeInceptionStepper.voltage_hi    = 40E3                     # Highest voltage multiplier
-DischargeInceptionStepper.voltage_steps = 4                       # Number of voltage steps
+DischargeInceptionStepper.voltage_lo    = 10E3                  # Low voltage multiplier
+DischargeInceptionStepper.voltage_hi    = 40E3                  # Highest voltage multiplier
+DischargeInceptionStepper.voltage_steps = 4                     # Number of voltage steps
 
 # Dynamic mode
-DischargeInceptionStepper.ion_transport = true                   # Turn on/off ion transport
-DischargeInceptionStepper.transport_alg = heun                    # Transport algorithm. 'euler', 'heun', or 'imex'
-DischargeInceptionStepper.cfl           = 0.8                     # CFL time step for dynamic mode
-DischargeInceptionStepper.first_dt      = 1.E-9                   # First time step to be used. 
-DischargeInceptionStepper.min_dt        = 1.E-9                   # Minimum permitted time step
-DischargeInceptionStepper.max_dt        = 1.E99                   # Maximum permitted time step
-DischargeInceptionStepper.voltage_eps   = 0.02                    # Permitted relative change in V(t) when computing dt
-DischargeInceptionStepper.max_dt_growth = 0.05                    # Maximum relative change in dt when computing dt
+DischargeInceptionStepper.ion_transport = true                  # Turn on/off ion transport
+DischargeInceptionStepper.transport_alg = heun                  # Transport algorithm. 'euler', 'heun', or 'imex'
+DischargeInceptionStepper.cfl           = 0.8                   # CFL time step for dynamic mode
+DischargeInceptionStepper.first_dt      = 1.E-9                 # First time step to be used. 
+DischargeInceptionStepper.min_dt        = 1.E-9                 # Minimum permitted time step
+DischargeInceptionStepper.max_dt        = 1.E99                 # Maximum permitted time step
+DischargeInceptionStepper.voltage_eps   = 0.02                  # Permitted relative change in V(t) when computing dt
+DischargeInceptionStepper.max_dt_growth = 0.05                  # Maximum relative change in dt when computing dt
 
 # ====================================================================================================
 # DischargeInceptionTagger class options
