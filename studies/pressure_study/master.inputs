@@ -352,8 +352,8 @@ DischargeInceptionStepper.townsend_grid_dx = 2.0		## Space step to use for Towns
 
 # Static mode
 DischargeInceptionStepper.voltage_lo    = 10E3                     # Low voltage multiplier
-DischargeInceptionStepper.voltage_hi    = 50E3                     # Highest voltage multiplier
-DischargeInceptionStepper.voltage_steps = 3                       # Number of voltage steps
+DischargeInceptionStepper.voltage_hi    = 40E3                     # Highest voltage multiplier
+DischargeInceptionStepper.voltage_steps = 4                       # Number of voltage steps
 
 # Dynamic mode
 DischargeInceptionStepper.ion_transport = true                   # Turn on/off ion transport

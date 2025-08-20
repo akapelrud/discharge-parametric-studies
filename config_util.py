@@ -231,7 +231,7 @@ def handle_combination(pspace, comb_dict):
             json.dump(value, json_file, indent=4)
 
 
-def copy_required_files(log, required_files, destination):
+def copy_files(log, required_files, destination):
     """ Copy the required files to the destination
     """
     for file in required_files:

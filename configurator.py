@@ -10,7 +10,7 @@ import sys
 import re
 
 from config_util import (
-        handle_combination, copy_required_files, get_output_prefix,
+        handle_combination, copy_files, get_output_prefix,
         DEFAULT_OUTPUT_DIR_PREFIX
         )
 
@@ -83,7 +83,15 @@ def setup_env(log, obj, obj_type, output_dir, dim):
     shutil.copy(program, out_dir, follow_symlinks=True)
     log.info(f"  * program: {program}")
 
-    copy_required_files(log, obj['required_files'], out_dir)
+    if 'required_files' in obj:
+        copy_files(log, obj['required_files'], out_dir)
+    else:
+        log.warning(f"no 'required_files' field in '{ident}'")
+
+    if 'job_script_dependencies' in obj:
+        copy_files(log, obj['job_script_dependencies'], out_dir)
+    else:
+        log.warning(f"no 'job_script_dependencies' field in '{ident}'")
 
     # store a copy of the parameter space used and the parse order of the keys,
     # so that this can be retrieved for postprocessing
@@ -102,8 +110,10 @@ def clean_definition(obj_def, keys, dim):
     """
     d = dict(
             identifier=obj_def['identifier'],
-            job_script=Path(obj_def['job_script']).name,
             program=Path(obj_def['program']).name,
+            program_options=str(obj_def['program_options']) if 'program_options' in obj_def else '',
+            job_script=Path(obj_def['job_script']).name,
+            job_script_dependencies=[Path(f).name for f in obj_def['job_script_dependencies']] if 'job_script_dependencies' in obj_def else [],
             required_files=[Path(f).name for f in obj_def['required_files']],
             parameter_space=obj_def['parameter_space'],
             space_order=list(keys),
@@ -130,7 +140,7 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
 
     # make a copy of required files to the run directory
     log.debug("Copying in required files.")
-    copy_required_files(log, obj['required_files'], res_dir)
+    copy_files(log, obj['required_files'], res_dir)
 
     # create program symlink
     os.symlink(
@@ -373,7 +383,7 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
     with open(out_dir / 'index.json', 'x') as resind_file:
         json.dump(dict(
             prefix=output_prefix,
-            keys =list(structure['parameter_space'].keys()),
+            keys=list(structure['parameter_space'].keys()),
             index={i: item for i, item in enumerate(sorted_combinations)}
             ), resind_file, indent=4)
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 #SBATCH --account=nn12041k
-#SBATCH --job-name=plasma
-## #SBATCH --nodes=4
-## #SBATCH --ntasks-per-node=128
+#SBATCH --nodes=4 --ntasks-per-node=128
+#SBATCH --time=0-00:10:00
+#SBATCH --partition=normal
 #SBATCH --time=0-00:10:00
 #SBATCH --output=R-%x.%A-%a.out
 #SBATCH --error=R-%x.%A-%a.err
@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file  # noqa: E402
 from config_util import (  # noqa: E402
-                         copy_required_files, handle_combination,
+                         copy_files, handle_combination,
                          DEFAULT_OUTPUT_DIR_PREFIX
                          )
 
@@ -49,6 +49,7 @@ if __name__ == '__main__':
             'set -o errexit',
             'set -o nounset',
             'module restore system',
+            'module load foss/2023a'
             'module load HDF5/1.14.0-gompi-2023a'
             ]
     p = Popen('; '.join(commands), shell=True, executable='/bin/bash')
@@ -132,8 +133,10 @@ if __name__ == '__main__':
     # split positive and negative potential data
     table = []
     for voltage, k_p, k_n, pos_p, pos_n in report_data:
-        table.append((voltage, k_p, pos_p))
-        table.append((-voltage, k_n, pos_n))
+        if k_p != 0.0:
+            table.append((voltage, k_p, pos_p))
+        if k_n != 0.0:
+            table.append((-voltage, k_n, pos_n))
     sorted_table = sorted(table, key=lambda t: t[0])
 
     log.info(sorted_table)
@@ -159,7 +162,7 @@ if __name__ == '__main__':
         os.symlink(Path('../program'), voltage_dir / 'program')
 
         required_files = [Path(f).name for f in structure['required_files']]
-        copy_required_files(log, required_files, voltage_dir)
+        copy_files(log, required_files, voltage_dir)
 
         # reuse the combination writing code from the configurator / config_util, by
         # building a fake combination and parameter space:
