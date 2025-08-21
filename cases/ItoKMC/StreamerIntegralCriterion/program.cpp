@@ -1,5 +1,4 @@
 #include <CD_Driver.H>
-#include <CD_GeoCoarsener.H>
 #include <CD_FieldSolverFactory.H>
 #include <CD_FieldSolverMultigrid.H>
 #include <CD_ItoLayout.H>
@@ -7,7 +6,7 @@
 #include <CD_RtLayout.H>
 #include <CD_McPhoto.H>
 #include <CD_ItoKMCJSON.H>
-#include <CD_Vessel.H>
+#include <CD_Rod.H>
 #include <CD_ItoKMCBackgroundEvaluator.H>
 #include <CD_ItoKMCStreamerTagger.H>
 #include "ParmParse.H"
@@ -43,9 +42,8 @@ int main(int argc, char* argv[]){
   // Initialize RNG
   Random::seed();
 
-  auto compgeom    = RefCountedPtr<ComputationalGeometry> (new Vessel());
+  auto compgeom    = RefCountedPtr<ComputationalGeometry> (new Rod());
   auto amr         = RefCountedPtr<AmrMesh> (new AmrMesh());
-  auto geocoarsen  = RefCountedPtr<GeoCoarsener> (new GeoCoarsener());
   auto physics     = RefCountedPtr<ItoKMCPhysics> (new ItoKMCJSON());
   auto timestepper = RefCountedPtr<ItoKMCStepper<>> (new ItoKMCBackgroundEvaluator<>(physics));
   auto tagger      = RefCountedPtr<CellTagger> (new ItoKMCStreamerTagger<ItoKMCStepper<>>(physics, timestepper, amr));
@@ -54,7 +52,7 @@ int main(int argc, char* argv[]){
   timestepper->setVoltage(potential_curve);
 
   // Set up the Driver and run it
-  RefCountedPtr<Driver> engine = RefCountedPtr<Driver> (new Driver(compgeom, timestepper, amr, tagger, geocoarsen));
+  RefCountedPtr<Driver> engine = RefCountedPtr<Driver> (new Driver(compgeom, timestepper, amr, tagger));
   engine->setupAndRun(input_file);
 
 #ifdef CH_MPI
