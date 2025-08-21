@@ -16,7 +16,7 @@ then
     module restore system
     module load foss/2023a
     module load HDF5/1.14.0-gompi-2023a
-    module load Python/3.12.3-GCCcore-13.3.0
+    module load Python/3.11.3-GCCcore-12.3.0
 fi
 
 # run jobscript through expected symbolic link
