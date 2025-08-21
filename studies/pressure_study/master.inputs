@@ -195,38 +195,13 @@ McPhoto.deposition           = cic           ## 'ngp'  -> nearest grid point, 'c
 McPhoto.deposition_cf        = halo          ## Coarse-fine deposition. Must be 'interp' or 'halo'
 
 
-
-
 # ====================================================================================================
-# GeoCoarsener class options
+# Rod geometry
 # ====================================================================================================
-GeoCoarsener.num_boxes   = 0            # Number of coarsening boxes (0 = don't coarsen)
-GeoCoarsener.box1_lo     = 0.0 0.0 0.0  # Remove irregular cell tags 
-GeoCoarsener.box1_hi     = 0.0 0.0 0.0  # between these two corners
-GeoCoarsener.box1_lvl    = 0            # up to this level
-GeoCoarsener.box1_inv    = false        # Remove except inside box (true)
-
-# ====================================================================================================
-# Vessel geometry class options
-#
-# This class is a pin-mushroom type geometry commonly used in high-voltage pressure/vaccum
-# Vessel. It (currently) consists of a rod electrode and a "mushroom" flat plate electrode, set up
-# along +y/+z in 2D/3D
-# ====================================================================================================
-Vessel.use_rod       = true           # Rod is on/off
-Vessel.use_shroom    = false          # Plate is on/off
-
-Vessel.rod_point     = 0. 20E-3       # Rod center point
-Vessel.rod_radius    = 10E-3          # Rod radius
-
-Vessel.shroom_point  = 0. 0. -0.5     # Mushroom center point
-Vessel.shroom_R      = 0.5            # Mushroom head radius
-Vessel.shroom_r      = 0.2            # Mushroom stem radius
-Vessel.shroom_d      = 0.2            # Mushroom head thickness
-Vessel.shroom_curv   = 0.05           # Mushroom corner curvatures
-
-Vessel.live_rod      = true           # Rod is live or not
-Vessel.live_shroom   = false # Mushroom is live or not
+Rod.radius = 10E-3      	# Rod radius
+Rod.point2 = 0.0 20E-3 0.0	# One endpoint
+Rod.point1 = 0.0 99 0.0  	# Other endpoint
+Rod.live   = true        	# Live or not
 
 # ====================================================================================================
 # ItoKMCGodunovStepper class options
@@ -286,6 +261,7 @@ ItoKMCJSON.chemistry_file     = chemistry.json  ## Chemistry file. Must be suppl
 # Kinetic Monte Carlo solver settings. 
 ItoKMCJSON.max_new_particles  = 32              ## Maximum number of computational particles to produce in reaction step
 ItoKMCJSON.max_new_photons    = 32              ## Maximum number of computational photons to produce in reaction step	
+ItoKMCJSON.increment_weights  = false           ## If true, increment existing particle weights rather than creating new ones
 ItoKMCJSON.crit_num           = 5               ## How many firings away from a Negative particle number?
 ItoKMCJSON.prop_eps           = 5.0             ## Maximum relative change in propensity function
 ItoKMCJSON.SSA_num            = 5               ## How many SSA steps to run when tau-leaping is inefficient
