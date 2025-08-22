@@ -22,7 +22,7 @@ inception_stepper = {
                 },
             "geometry_radius": {
                 "target": "master.inputs",
-                "uri": "Vessel.rod_radius",
+                "uri": "Rod.radius",
                 }
             }
         }
@@ -52,7 +52,7 @@ plasma_study_1 = {
             "geometry_radius": {
                 "database": "inception_stepper",  # database dependency
                 "target": "master.inputs",
-                "uri": "Vessel.rod_radius",
+                "uri": "Rod.radius",
                 "values": [1e-3] #, 2e-3, 3e-3]
                 },
             "pressure": {
