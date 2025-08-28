@@ -26,7 +26,9 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::ItoKMCBackgroundEvaluator(RefCountedPtr<I
 
   ParmParse pp("ItoKMCBackgroundEvaluator");
 
-  m_exitCrit = std::numeric_limits<Real>::max();
+  m_exitCrit       = std::numeric_limits<Real>::max();
+  m_maxFieldChange = -1.0;
+  m_relFieldChange = -1.0;
 
   pp.query("exit_crit", m_exitCrit);
 }
@@ -74,6 +76,55 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::postCheckpointSetup() noexcept
 }
 
 template <typename I, typename C, typename R, typename F>
+Real
+ItoKMCBackgroundEvaluator<I, C, R, F>::advance(const Real a_dt)
+{
+  CH_TIME("ItoKMCBackgroundEvaluator::advance");
+  if (this->m_verbosity > 5) {
+    pout() << "ItoKMCBackgroundEvaluator::advance" << endl;
+  }
+
+  const Real actualDt = ItoKMCGodunovStepper<I, C, R, F>::advance(a_dt);
+
+  const std::pair<Real, Real> fieldChange = this->evaluateSpaceChargeEffects();
+
+  m_relFieldChange = fieldChange.first;
+  m_maxFieldChange = fieldChange.second;
+
+  return actualDt;
+}
+
+template <typename I, typename C, typename R, typename F>
+Real
+ItoKMCBackgroundEvaluator<I, C, R, F>::computeDt()
+{
+  CH_TIME("ItoKMCBackgroundEvaluator::computeDt");
+  if (this->m_verbosity > 5) {
+    pout() << "ItoKMCBackgroundEvaluator::computeDt" << endl;
+  }
+
+  Real newDt = 0.0;
+
+  const bool noElectronsPresent = false;
+
+  if ((m_maxFieldChange > m_exitCrit) && (m_exitCrit > 0.0)) {
+    newDt = 0.0;
+
+    pout() << "ItoKMCBackgroundEvaluator -- abort because field changed by more than specified threshold" << endl;
+  }
+  else if (noElectronsPresent) { // Abort if we're out of electrons.
+    newDt = 0.0;
+
+    pout() << "ItoKMCBackgroundEvaluator -- abort because no electrons are present" << endl;
+  }
+  else {
+    newDt = ItoKMCGodunovStepper<I, C, R, F>::computeDt();
+  }
+
+  return newDt;
+}
+
+template <typename I, typename C, typename R, typename F>
 void
 ItoKMCBackgroundEvaluator<I, C, R, F>::printStepReport() noexcept
 {
@@ -82,15 +133,10 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::printStepReport() noexcept
     pout() << "ItoKMCBackgroundEvaluator::printStepReport" << endl;
   }
 
-  const Real k = this->evaluateSpaceChargeEffects();
-
   ItoKMCGodunovStepper<I, C, R, F>::printStepReport();
   const std::string whitespace = "                                   ";
-  pout() << whitespace + "Delta E     = " << 100.0 * k << " (%)" << endl;
-
-  if (k > m_exitCrit) {
-    MayDay::Abort("ItoKMCBackgroundEvaluator -- abort because field changed by more than specified threshold");
-  }
+  pout() << whitespace + "Delta E(max) = " << 100.0 * m_maxFieldChange << " (%)" << endl;
+  pout() << whitespace + "Delta E(rel) = " << 100.0 * m_relFieldChange << " (%)" << endl;
 }
 
 template <typename I, typename C, typename R, typename F>
@@ -136,7 +182,7 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::computeBackgroundField() noexcept
 }
 
 template <typename I, typename C, typename R, typename F>
-Real
+std::pair<Real, Real>
 ItoKMCBackgroundEvaluator<I, C, R, F>::evaluateSpaceChargeEffects() noexcept
 {
   CH_TIME("ItoKMCBackgroundEvaluator::evaluateSpaceChargeEffects");
@@ -172,7 +218,16 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::evaluateSpaceChargeEffects() noexcept
   //
   // PS: I'm doing this with a direct loop because DataOps::getMaxMin will do ALL cells, including ones that are
   //     covered by a finer level. But we only want to evaluate the valid region.
-  Real maxChange = 0.0;
+  Real relChange = -1.0;
+  Real maxChange = -1.0;
+
+  Real maxSpaceChargeField = 0.0;
+  Real minSpaceChargeField = 0.0;
+  Real maxBackgroundField  = 0.0;
+  Real minBackgroundField  = 0.0;
+
+  DataOps::getMaxMin(maxSpaceChargeField, minSpaceChargeField, poissonNorm, 0);
+  DataOps::getMaxMin(maxBackgroundField, minBackgroundField, laplaceNorm, 0);
 
   for (int lvl = 0; lvl <= (this->m_amr)->getFinestLevel(); lvl++) {
     const DisjointBoxLayout& dbl   = (this->m_amr)->getGrids(this->m_fluidRealm)[lvl];
@@ -193,13 +248,13 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::evaluateSpaceChargeEffects() noexcept
 
       auto regularKernel = [&](const IntVect& iv) -> void {
         if (validCells(iv) && ebisbox.isRegular(iv)) {
-          maxChange = std::max(maxChange, std::abs(dataReg(iv, 0)));
+          relChange = std::max(relChange, std::abs(dataReg(iv, 0)));
         }
       };
 
       auto irregularKernel = [&](const VolIndex& vof) -> void {
         if (validCells(vof.gridIndex()) && ebisbox.isIrregular(vof.gridIndex())) {
-          maxChange = std::max(maxChange, std::abs(data(vof, 0)));
+          relChange = std::max(relChange, std::abs(data(vof, 0)));
         }
       };
 
@@ -210,7 +265,10 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::evaluateSpaceChargeEffects() noexcept
     }
   }
 
-  return ParallelOps::max(maxChange);
+  relChange = ParallelOps::max(relChange);
+  maxChange = maxSpaceChargeField / maxBackgroundField - 1.0;
+
+  return std::make_pair(relChange, maxChange);
 }
 
 #include <CD_NamespaceFooter.H>

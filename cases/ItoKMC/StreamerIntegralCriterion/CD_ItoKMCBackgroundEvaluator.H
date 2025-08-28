@@ -48,7 +48,7 @@ namespace Physics {
 	@brief Post-checkpoint operations. Computes the background field.
       */
       virtual void
-      postCheckpointSetup() noexcept override final;      
+      postCheckpointSetup() noexcept override final;
 
       /*!
 	@brief Print a new step report. This is the old one plus the maximum field change.
@@ -56,11 +56,35 @@ namespace Physics {
       virtual void
       printStepReport() noexcept override final;
 
+      /*!
+	@brief Overriden advance method.
+	@param[in] a_dt Time step
+      */
+      virtual Real
+      advance(const Real a_dt) override;
+
+      /*!
+	@brief Compute a time step used for the advance method
+	@note This function returns a zero value if space charge effects have set in, which lets Driver put plot files in the crash folder.
+      */
+      virtual Real
+      computeDt() override;
+
     protected:
       /*!
 	@brief Exit criterion -- if the background field changes by this much the simulation is terminated.
       */
       Real m_exitCrit;
+
+      /*!
+	@brief Change in max field.
+      */
+      Real m_maxFieldChange;
+
+      /*!
+	@brief Change in relative field.
+      */
+      Real m_relFieldChange;
 
       /*!
 	@brief For storing the background field.
@@ -76,9 +100,10 @@ namespace Physics {
 
       /*!
 	@brief Evaluate the maximum change in the background field.
+	@return Returns a pair: relative change, maximum change
       */
       [[nodiscard]]
-      virtual Real
+      virtual std::pair<Real, Real>
       evaluateSpaceChargeEffects() noexcept;
     };
   } // namespace ItoKMC
