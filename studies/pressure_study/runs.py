@@ -33,7 +33,6 @@ plasma_study_1 = {
         'job_script': 'plasma_jobscript.py',
         'job_script_dependencies': [
             'generic_array_job.sh',
-            'plasma_visit_plotscript.py',
             'parse_report.py',
             'config_util.py',
             'json_requirement.py',
