@@ -72,9 +72,13 @@ if __name__ == '__main__':
         raise ValueError("missing field 'space_order' in database 'inception_stepper'")
     db_param_order = db_structure['space_order']
 
+    # load this run's parameters (radius, pressure, etc.)
     with open('parameters.json') as param_file:
         parameters = json.load(param_file)
+    if 'geometry_radius' not in parameters:
+        raise RuntimeError("'geometry_radius' is missing from 'parameters.json'")
 
+    # put the parameters in the same order as the database index needs them
     db_search_index = []
     for db_param in db_param_order:
         db_search_index.append(parameters[db_param])
@@ -149,15 +153,19 @@ if __name__ == '__main__':
         # building a fake combination and parameter space:
         comb_dict = dict(
                 voltage=row[0],
-                particle_position=row[2]
+                sphere_dist_props=[
+                    row[2],  # center position
+                    0.5*parameters['geometry_radius']  # half the tip's radius
+                    ],
+                single_particle_position=row[2]  # center position
                 )
-        distribution_type = 'gaussian distribution'
+        distribution_type = 'sphere distribution'
         pspace = {
                 "voltage": {
                     "target": voltage_dir/input_file,
                     "uri": "StreamerIntegralCriterion.potential",
                     },
-                "particle_position": {
+                "sphere_dist_props": {
                     "target": voltage_dir/'chemistry.json',
                     'uri': [
                         'plasma species',
@@ -165,7 +173,18 @@ if __name__ == '__main__':
                         'initial particles',
                         f'+["{distribution_type}"]',
                         distribution_type,  # TODO: fix duplicity here
-                        'center'
+                        ['center', 'radius']  # NB! two parameters
+                        ]
+                    },
+                "single_particle_position": {
+                    "target": voltage_dir/'chemistry.json',
+                    'uri': [
+                        'plasma species',
+                        '+["id"="e"]',  # find electrons in list
+                        'initial particles',
+                        f'+["single particle"]',
+                        "single particle",  # TODO: fix duplicity here
+                        'center'  # NB! two parameters
                         ]
                     }
                 }
