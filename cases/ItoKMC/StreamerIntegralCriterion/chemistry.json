@@ -82,13 +82,19 @@
 	    },
 	    "initial particles" : [
 		{
-		    "gaussian distribution" : {
+		    "sphere distribution" : {
 			"center" : [ 0, 20E-3, 0 ],
 			"radius" : 2E-3,         
 			"num particles": 100,   
 			"weight" : 1            
 		    }
-		}
+		},
+    {
+		    "single particle" : {
+			"center" : [ 0, 20E-3, 0 ],
+			"weight" : 10
+		    }
+    }
 	    ]
         },
 	{
