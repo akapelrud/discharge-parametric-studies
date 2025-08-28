@@ -12,10 +12,10 @@ ItoKMCBackgroundEvaluator.exit_crit = 0.05   ## percentage per cell change in fi
 # ====================================================================================================
 # AmrMesh class options
 # ====================================================================================================
-AmrMesh.lo_corner        = -6E-2 0  -6E-2    ## Low corner of problem domain
-AmrMesh.hi_corner        =  6E-2 45E-3  6E-2 ## High corner of problem domain
+AmrMesh.lo_corner        = -6E-2 0   -6E-2   ## Low corner of problem domain
+AmrMesh.hi_corner        =  6E-2 6E-2 6E-2   ## High corner of problem domain
 AmrMesh.verbosity        = -1                ## Controls verbosity. 
-AmrMesh.coarsest_domain  = 128 48 128        ## Number of cells on coarsest domain
+AmrMesh.coarsest_domain  = 64 32 64          ## Number of cells on coarsest domain
 AmrMesh.max_amr_depth    = 4                 ## Maximum amr depth
 AmrMesh.max_sim_depth    = -1                ## Maximum simulation depth
 AmrMesh.fill_ratio       = 1.0               ## Fill ratio for grid generation
@@ -50,7 +50,7 @@ Driver.checkpoint_interval             = 1000             ## Checkpoint interval
 Driver.regrid_interval                 = 5                ## Regrid interval
 Driver.write_regrid_files              = false            ## Write regrid files or not.
 Driver.write_restart_files             = false            ## Write restart files or not
-Driver.initial_regrids                 = 8                ## Number of initial regrids
+Driver.initial_regrids                 = 5                ## Number of initial regrids
 Driver.do_init_load_balance            = false            ## If true, load balance the first step in a fresh simulation.
 Driver.start_time                      = 0                ## Start time (fresh simulations only)
 Driver.stop_time                       = 1.0              ## Stop time
@@ -107,12 +107,12 @@ CdrCTU.gmg_smoother         = red_black               ## Relaxation type. 'jacob
 # ====================================================================================================
 FieldSolverMultigrid.verbosity         = -1                # Class verbosity
 FieldSolverMultigrid.jump_bc           = natural           # Jump BC type ('natural' or 'saturation_charge')
-FieldSolverMultigrid.bc.x.lo           = dirichlet 0.0     # Bc type (see docs)
-FieldSolverMultigrid.bc.x.hi           = dirichlet 0.0     # Bc type (see docs)
+FieldSolverMultigrid.bc.x.lo           = neumann 0.0       # Bc type (see docs)
+FieldSolverMultigrid.bc.x.hi           = neumann 0.0       # Bc type (see docs)
 FieldSolverMultigrid.bc.y.lo           = dirichlet 0.0     # Bc type (see docs)
-FieldSolverMultigrid.bc.y.hi           = neumann   0.0     # Bc type (see docs)
-FieldSolverMultigrid.bc.z.lo           = dirichlet 0.0     # Bc type (see docs)
-FieldSolverMultigrid.bc.z.hi           = dirichlet 0.0     # Bc type (see docs)
+FieldSolverMultigrid.bc.y.hi           = dirichlet 1.0     # Bc type (see docs)
+FieldSolverMultigrid.bc.z.lo           = neumann 0.0       # Bc type (see docs)
+FieldSolverMultigrid.bc.z.hi           = neumann 0.0       # Bc type (see docs)
 FieldSolverMultigrid.plt_vars          = phi rho E         # Plot variables: 'phi', 'rho', 'E', 'res', 'perm', 'sigma', 'Esol'
 FieldSolverMultigrid.use_regrid_slopes = true              # Use slopes when regridding or not
 FieldSolverMultigrid.kappa_source      = true              # Volume weighted space charge density or not (depends on algorithm)
@@ -127,14 +127,14 @@ FieldSolverMultigrid.gmg_min_iter      = 5                 # Minimum number of i
 FieldSolverMultigrid.gmg_max_iter      = 32                # Maximum number of iterations
 FieldSolverMultigrid.gmg_exit_tol      = 1.E-10            # Residue tolerance
 FieldSolverMultigrid.gmg_exit_hang     = 0.2               # Solver hang
-FieldSolverMultigrid.gmg_min_cells     = 16                # Bottom drop
+FieldSolverMultigrid.gmg_min_cells     = 4                 # Bottom drop
 FieldSolverMultigrid.gmg_drop_order    = 0                 # Drop stencil order to 1 if domain is coarser than this.
 FieldSolverMultigrid.gmg_bc_order      = 2                 # Boundary condition order for multigrid
-FieldSolverMultigrid.gmg_bc_weight     = 2                 # Boundary condition weights (for least squares)
+FieldSolverMultigrid.gmg_bc_weight     = 1                 # Boundary condition weights (for least squares)
 FieldSolverMultigrid.gmg_jump_order    = 2                 # Boundary condition order for jump conditions
-FieldSolverMultigrid.gmg_jump_weight   = 2                 # Boundary condition weight for jump conditions (for least squares)
+FieldSolverMultigrid.gmg_jump_weight   = 1                 # Boundary condition weight for jump conditions (for least squares)
 FieldSolverMultigrid.gmg_reduce_order  = false             # If true, always use order=1 EB stencils in coarsened cells
-FieldSolverMultigrid.gmg_bottom_solver = bicgstab          # Bottom solver type. 'simple', 'bicgstab', or 'gmres'
+FieldSolverMultigrid.gmg_bottom_solver = simple 64         # Bottom solver type. 'simple', 'bicgstab', or 'gmres'
 FieldSolverMultigrid.gmg_cycle         = vcycle            # Cycle type. Only 'vcycle' supported for now. 
 FieldSolverMultigrid.gmg_smoother      = red_black         # Relaxation type. 'jacobi', 'multi_color', or 'red_black'
 
