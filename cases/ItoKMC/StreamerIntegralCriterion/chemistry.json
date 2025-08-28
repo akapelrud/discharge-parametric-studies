@@ -91,7 +91,7 @@
 		},
     {
 		    "single particle" : {
-			"center" : [ 0, 20E-3, 0 ],
+			"position" : [ 0, 20E-3, 0 ],
 			"weight" : 10
 		    }
     }
