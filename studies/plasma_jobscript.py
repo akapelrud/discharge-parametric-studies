@@ -184,7 +184,7 @@ if __name__ == '__main__':
                         'initial particles',
                         f'+["single particle"]',
                         "single particle",  # TODO: fix duplicity here
-                        'center'  # NB! two parameters
+                        'position'  # NB! two parameters
                         ]
                     }
                 }
