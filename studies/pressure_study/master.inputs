@@ -328,9 +328,8 @@ DischargeInceptionStepper.grad_alpha_dx    = 0.1		## Maximum step size relative 
 DischargeInceptionStepper.townsend_grid_dx = 2.0		## Space step to use for Townsend tracking
 
 # Static mode
-DischargeInceptionStepper.voltage_lo    = 2E3                   # Low voltage multiplier
-DischargeInceptionStepper.voltage_hi    = 12E3                  # Highest voltage multiplier
-DischargeInceptionStepper.voltage_steps = 5                     # Number of voltage steps
+DischargeInceptionStepper.rel_step_dU     = 0.05    ## Relative (%) voltage increase for each step
+DischargeInceptionStepper.limit_max_K     = 15.0    ## Limit the maximum K-value
 
 # Dynamic mode
 DischargeInceptionStepper.ion_transport = true                  # Turn on/off ion transport
@@ -347,7 +346,7 @@ DischargeInceptionStepper.max_dt_growth = 0.05                  # Maximum relati
 # ====================================================================================================
 DischargeInceptionTagger.verbosity   = -1    # Tagger chattiness. 
 DischargeInceptionTagger.buffer      = 4     # Grown buffer around flagged cells
-DischargeInceptionTagger.max_voltage = 50E3  # Maximum applied voltage 
+DischargeInceptionTagger.max_voltage = 20E3  # Maximum applied voltage 
 DischargeInceptionTagger.ref_alpha   = 1.0   # Refinement curvature criterion. Lower => more mesh
 DischargeInceptionTagger.plot        = false # Plot tagging field or not.
 

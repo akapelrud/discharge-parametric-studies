@@ -2,6 +2,7 @@
 
 #SBATCH --account=nn12041k
 ##SBATCH --nodes=4 --ntasks-per-node=128
+#SBATCH --ntasks=1 --cpus-per-task=4
 #SBATCH --time=0-00:10:00
 ##SBATCH --partition=normal
 #SBATCH --time=0-00:10:00
@@ -19,6 +20,6 @@ then
     module load Python/3.11.3-GCCcore-12.3.0
 fi
 
-# run jobscript through expected symbolic link
 python ./jobscript_symlink
+exit $?
 

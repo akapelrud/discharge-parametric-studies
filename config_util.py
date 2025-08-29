@@ -136,6 +136,17 @@ def handle_json_combination(json_content, key, pspace, comb_dict):
         set_nested_value(json_content, uri,
                          comb_dict[key] if dims == 1 else comb_dict[key][i])
 
+def read_input_float_field(input_file: Path, key: str):
+    value = None
+    try:
+        with open(input_file, 'r') as file:
+            for line in file:
+                if line.startswith(key.strip()):
+                    s = line.split('=')
+                    value = float(s[1].split('#')[0])
+    finally:
+        return value
+
 
 def handle_input_combination(input_file, key, pspace, comb_dict):
     """
@@ -143,7 +154,7 @@ def handle_input_combination(input_file, key, pspace, comb_dict):
     """
     if 'uri' not in pspace[key]:
         raise ValueError(f'No uri for input requirement: {key}')
-    if not isinstance(pspace[key]['uri'], str):
+    if not isinstance(pspace[key]['uri'], str):  # TODO: extend to list, as for json attributes
         raise ValueError(f'input requirement can only be a scalar string: {key}')
     if pspace[key]['uri'] == "":
         raise ValueError(f'empty uri string for: {key}')
@@ -207,6 +218,10 @@ def handle_combination(pspace, comb_dict):
 
     json_cache = {}
     for key in comb_dict.keys():
+        if 'target' not in pspace[key]:
+            log.warning(f"'target' not in {key} - assuming dummy parameter")
+            continue
+
         target = Path(pspace[key]['target'])
 
         log.debug(f"key: {key}, target: {target}")

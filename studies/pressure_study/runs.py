@@ -5,11 +5,14 @@ import numpy as np
 
 inception_stepper = {
         'identifier': 'inception_stepper',
-        'job_script': 'generic_array_job_jobscript.py',
+        'job_script': 'discharge_inception_jobscript.py',
         'program': 'InceptionStepper/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'output_directory': 'is_db',
         'job_script_dependencies': [
-            'generic_array_job.sh'
+            'generic_array_job.sh',
+            'parse_report.py',
+            'config_util.py',
+            'json_requirement.py'
             ],
         'required_files': [
             'master.inputs',
@@ -23,6 +26,10 @@ inception_stepper = {
             "geometry_radius": {
                 "target": "master.inputs",
                 "uri": "Rod.radius",
+                },
+            'K_max': {
+                "target": "master.inputs",
+                "uri": "DischargeInceptionStepper.limit_max_K"
                 }
             }
         }
@@ -59,6 +66,11 @@ plasma_study_1 = {
                 "target": "chemistry.json",
                 "uri": ["gas", "law", "my_ideal_gas", "pressure"],
                 "values": [1e5]  # np.arange(1e5, 11e5, 10e5).tolist()
+                },
+            "K_min": { "values": [10] }, # needed by jobscript, written to parameters.json for each run
+            "K_max": {
+                "database": "inception_stepper",
+                "values": [15.0]
                 },
             "photoionization": {
                 "target": "chemistry.json",
