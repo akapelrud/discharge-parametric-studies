@@ -2,7 +2,7 @@
 
 #SBATCH --account=nn12041k
 ##SBATCH --nodes=4 --ntasks-per-node=128
-#SBATCH --ntasks=1 --cpus-per-task=4
+#SBATCH --ntasks=6 --cpus-per-task=1
 #SBATCH --time=0-00:10:00
 ##SBATCH --partition=normal
 #SBATCH --time=0-00:10:00

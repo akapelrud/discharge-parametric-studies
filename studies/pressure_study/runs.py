@@ -67,10 +67,10 @@ plasma_study_1 = {
                 "uri": ["gas", "law", "my_ideal_gas", "pressure"],
                 "values": [1e5]  # np.arange(1e5, 11e5, 10e5).tolist()
                 },
-            "K_min": { "values": [10] }, # needed by jobscript, written to parameters.json for each run
+            "K_min": { "values": [8] }, # needed by jobscript, written to parameters.json for each run
             "K_max": {
                 "database": "inception_stepper",
-                "values": [15.0]
+                "values": [17.0]
                 },
             "plasma_polarity": { "values": ["positive"] },  # used by jobscript
             "photoionization": {
