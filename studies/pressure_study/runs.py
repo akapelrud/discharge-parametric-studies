@@ -72,6 +72,7 @@ plasma_study_1 = {
                 "database": "inception_stepper",
                 "values": [15.0]
                 },
+            "plasma_polarity": { "values": ["positive"] },  # used by jobscript
             "photoionization": {
                 "target": "chemistry.json",
                 "uri": [

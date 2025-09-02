@@ -77,6 +77,16 @@ if __name__ == '__main__':
         parameters = json.load(param_file)
     if 'geometry_radius' not in parameters:
         raise RuntimeError("'geometry_radius' is missing from 'parameters.json'")
+    
+    polarity = 0  # 1,0 or -1
+    if 'plasma_polarity' not in parameters:
+        log.warning("'plasma_polarity' was not found in parameters.json, running for both polarities")
+    else:
+        if parameters['plasma_polarity'] == 'positive':
+            polarity = 1
+        elif parameters['plasma_polarity'] == 'negative':
+            polarity = -1
+    log.info('Running with polarity {polarity} (0:both, 1:positive, -1:negative)')
 
     # put the parameters in the same order as the database index needs them
     db_search_index = []
@@ -105,6 +115,21 @@ if __name__ == '__main__':
     else:
         db_run_path /= DEFAULT_OUTPUT_DIR_PREFIX + str(index)
 
+    Kmin = 0
+    if 'K_min' not in parameters:
+        log.warning("'K_min' not found in parameters, using Kmin=0")
+    else:
+        Kmin = parameters['K_min']
+
+    if 'K_max' not in parameters:
+        log.warning("'K_max' not found in parameters, trying to read from .inputs file")
+        Kmax = read_input_float_field(input_file, 'DischargeInceptionStepper.limit_max_K')
+        if Kmax is None:
+            raise RuntimeError(f"'{input_file}' does not contain 'DischargeInceptionStepper.limit_max_K' field")
+        log.info(f"Using Kmax={Kmax}")
+    else:
+        Kmax = parameters['K_max']
+
     report_data = parse_report_file(db_run_path / 'report.txt',
                                     ['+/- Voltage',
                                      'Max K(+)',
@@ -114,11 +139,12 @@ if __name__ == '__main__':
     report_data = report_data[1]
     # split positive and negative potential data
     table = []
-    for voltage, k_p, k_n, pos_p, pos_n in report_data:
-        if k_p != 0.0:
-            table.append((voltage, k_p, pos_p))
-        if k_n != 0.0:
-            table.append((-voltage, k_n, pos_n))
+    for voltage, K_p, K_n, pos_p, pos_n in report_data:
+        # simple filtering on [Kmin,Kmax]:
+        if polarity >= 0 and K_p >= Kmin and K_p <= Kmax:
+            table.append((voltage, K_p, pos_p))
+        elif polarity <= 0 and K_n >= Kmin and K_n <= Kmax:
+            table.append((-voltage, K_n, pos_n))
     sorted_table = sorted(table, key=lambda t: t[0])
 
     log.info(sorted_table)
