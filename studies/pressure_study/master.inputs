@@ -346,9 +346,9 @@ DischargeInceptionStepper.max_dt_growth = 0.05                  # Maximum relati
 # DischargeInceptionTagger class options
 # ====================================================================================================
 DischargeInceptionTagger.verbosity   = -1    # Tagger chattiness. 
-DischargeInceptionTagger.buffer      = 4     # Grown buffer around flagged cells
+DischargeInceptionTagger.buffer      = 8     # Grown buffer around flagged cells
 DischargeInceptionTagger.max_voltage = 1     # Maximum applied voltage
-DischargeInceptionTagger.ref_alpha   = 1.0   # Refinement curvature criterion. Lower => more mesh
+DischargeInceptionTagger.ref_alpha   = 0.3   # Refinement curvature criterion. Lower => more mesh
 DischargeInceptionTagger.plot        = false # Plot tagging field or not.
 
 # ====================================================================================================
