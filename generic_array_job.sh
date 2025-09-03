@@ -2,10 +2,10 @@
 
 #SBATCH --account=nn12041k
 ##SBATCH --nodes=4 --ntasks-per-node=128
-#SBATCH --ntasks=6 --cpus-per-task=1
+#SBATCH --ntasks=5 --cpus-per-task=1
 #SBATCH --time=0-00:10:00
 ##SBATCH --partition=normal
-#SBATCH --time=0-00:10:00
+#SBATCH --time=0-00:25:00
 #SBATCH --output=R-%x.%A-%a.out
 #SBATCH --error=R-%x.%A-%a.err
             
