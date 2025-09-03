@@ -171,7 +171,7 @@ if __name__ == '__main__':
     output_prefix = "voltage_"
 
     # write voltage index
-    with open('index.json', 'x') as voltage_index_file:
+    with open('index.json', 'w') as voltage_index_file:
         json.dump(dict(
             key=["voltage", "K", "particle_position"],
             prefix=output_prefix,
@@ -179,8 +179,9 @@ if __name__ == '__main__':
             ),
                   voltage_index_file, indent=4)
 
-    # recreate the generic job-script symlink, so that the actual .sh jobscript work:
-    os.symlink('generic_array_job_jobscript.py', 'jobscript_symlink')
+    if not os.path.islink('jobscript_symlink'):
+        # recreate the generic job-script symlink, so that the actual .sh jobscript work:
+        os.symlink('generic_array_job_jobscript.py', 'jobscript_symlink')
 
     # create run directories, copy files, set voltage and particle positions, etc.
     for i, row in enum_table:
