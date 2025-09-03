@@ -86,7 +86,7 @@ if __name__ == '__main__':
             polarity = 1
         elif parameters['plasma_polarity'] == 'negative':
             polarity = -1
-    log.info('Running with polarity {polarity} (0:both, 1:positive, -1:negative)')
+    log.info(f'Running with polarity {polarity} (0:both, 1:positive, -1:negative)')
 
     # put the parameters in the same order as the database index needs them
     db_search_index = []
@@ -136,18 +136,36 @@ if __name__ == '__main__':
                                      'Max K(-)',
                                      'Pos. max K(+)',
                                      'Pos. max K(-)'])
-    report_data = report_data[1]
-    # split positive and negative potential data
+    report_data = report_data[1]  # discard column names
+
+    def pick_data(Kmin, Kmax, data):
+        imin, iMax = (0, 0)
+        for i, (_, K, _) in enumerate(data):
+            if K <= Kmin:
+                imin = i
+            if K <= Kmax:
+                iMax = i
+
+        if data[iMax][1] != Kmax and iMax+1 < len(data):
+            iMax += 1  # round to nearest K higher than Kmax
+        return data[imin:iMax+1]
+
     table = []
-    for voltage, K_p, K_n, pos_p, pos_n in report_data:
-        # simple filtering on [Kmin,Kmax]:
-        if polarity >= 0 and K_p >= Kmin and K_p <= Kmax:
-            table.append((voltage, K_p, pos_p))
-        elif polarity <= 0 and K_n >= Kmin and K_n <= Kmax:
-            table.append((-voltage, K_n, pos_n))
+    if polarity >= 0:
+        table.extend(pick_data(Kmin, Kmax,
+                               [(voltage, Kp, pos_p)
+                                for voltage, Kp, _, pos_p, _ in report_data])
+                     )
+    if polarity <= 0:
+        table.extend(pick_data(Kmin, Kmax,
+                               [(voltage, Km, pos_n)
+                                for voltage, _, Km, _, pos_n in report_data])
+                     )
+
+    # sort on voltage (ascending)
     sorted_table = sorted(table, key=lambda t: t[0])
 
-    log.info(sorted_table)
+    log.debug(sorted_table)
     enum_table = list(enumerate(sorted_table))
 
     output_prefix = "voltage_"
