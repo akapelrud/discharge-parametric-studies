@@ -1,4 +1,6 @@
 #!/bin/bash
+# Author André Kapelrud
+# Copyright © 2025 SINTEF Energi AS
 
 #SBATCH --account=nn12041k
 ##SBATCH --nodes=4 --ntasks-per-node=128

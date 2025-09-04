@@ -1,4 +1,8 @@
-#!/usr/bin/env  python
+#!/usr/bin/env python
+"""
+Author André Kapelrud
+Copyright © 2025 SINTEF Energi AS
+"""
 
 from itertools import groupby, tee
 import sys

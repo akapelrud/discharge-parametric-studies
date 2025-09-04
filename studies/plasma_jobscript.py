@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+"""
+Author André Kapelrud
+Copyright © 2025 SINTEF Energi AS
+"""
 
 import os
 import sys
