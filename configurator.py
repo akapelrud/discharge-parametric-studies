@@ -427,28 +427,25 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
 
 def main():
     parser = argparse.ArgumentParser(
-            description="Batch script for mapping out streamer integral conditions")
+            description="Batch script for running user-defined, parametrised chombo-discharge studies.")
     parser.add_argument("--verbose", action="store_true", help="increase verbosity")
-    parser.add_argument("--logfile", default="configurator.log", help="log file")
+    parser.add_argument("--logfile", default="configurator.log", help="log file. (Postfix) Rotated automatically each invocation.")
 
     # output arguments
     parser.add_argument("--output-dir", default="study_results", type=Path,
                         help="output directory for study result files")
-
     # input file arguments
     parser.add_argument("run_definition",
                         default=Path("run_definition.json"),
                         type=Path, help="parameter space input file. "
                         "Json read directly, or if .py file look for 'top_object' "
                         "dictionary")
-
     # run options
     parser.add_argument("--dim", default=3, type=int,
-                        help="dimensionality of simulations")
+                        help="Dimensionality of simulations. Must match chombo-discharge compilation.")
     parser.add_argument("--dry-run", action="store_true",
-                        help="Don't run any mpi simulations, only create folder "
+                        help="Don't schedule any slurm jobs, only create folder "
                         "structures.")
-
     args = parser.parse_args()
 
     log = logging.getLogger(sys.argv[0])
