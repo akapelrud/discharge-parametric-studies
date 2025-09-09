@@ -10,6 +10,7 @@ import json
 import re
 import logging
 import itertools
+import shutil
 
 from subprocess import Popen, PIPE
 
@@ -286,7 +287,7 @@ if __name__ == '__main__':
                     for i in itertools.count(start=0, step=1):
                         path_suggestion = array_job_id_path.with_suffix(f'.bak{i:d}')
                         if not path_suggestion.is_file():
-                            shutil.move(array_job_id, path_suggestion)
+                            shutil.move(array_job_id_path, path_suggestion)
                             break
                         if i > MAX_BACKUPS:  # simple guard
                             raise RuntimeError('Reached 100th iteration when trying to backup array_job_id file')
