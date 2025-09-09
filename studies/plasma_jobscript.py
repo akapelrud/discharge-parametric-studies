@@ -185,7 +185,7 @@ if __name__ == '__main__':
             if not path_suggestion.is_file():
                 shutil.move(index_path, path_suggestion)
                 break
-            if i > 100:  # simple guard
+            if i > MAX_BACKUPS:  # simple guard
                 raise RuntimeError('Reached 100th iteration when trying to backup index.json')
 
     # write voltage index
@@ -280,7 +280,18 @@ if __name__ == '__main__':
             m = re.match('^Submitted batch job (?P<job_id>[0-9]+)', line)
             if m:
                 job_id = m.groupdict()['job_id']
-                with open('array_job_id', 'x') as job_id_file:
+
+                array_job_id_path = Path('array_job_id')
+                if array_job_id_path.is_file():
+                    for i in itertools.count(start=0, step=1):
+                        path_suggestion = array_job_id_path.with_suffix(f'.bak{i:d}')
+                        if not path_suggestion.is_file():
+                            shutil.move(array_job_id, path_suggestion)
+                            break
+                        if i > MAX_BACKUPS:  # simple guard
+                            raise RuntimeError('Reached 100th iteration when trying to backup array_job_id file')
+
+                with open(array_job_id_path, 'w') as job_id_file:
                     job_id_file.write(job_id)
                 log.info(f"Submitted array job (for '{structure['identifier']}" +
                          f"_voltage' combination set). [slurm job id = {job_id}]")
