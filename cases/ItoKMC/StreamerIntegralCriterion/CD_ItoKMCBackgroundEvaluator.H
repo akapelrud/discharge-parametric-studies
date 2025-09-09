@@ -77,11 +77,6 @@ namespace Physics {
       Real m_exitCrit;
 
       /*!
-        @brief Time step for first time step
-      */
-      Real m_firstDt;
-
-      /*!
 	@brief Change in max field.
       */
       Real m_maxFieldChange;

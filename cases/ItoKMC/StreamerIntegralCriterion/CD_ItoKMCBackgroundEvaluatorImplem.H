@@ -29,10 +29,8 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::ItoKMCBackgroundEvaluator(RefCountedPtr<I
   m_exitCrit       = std::numeric_limits<Real>::max();
   m_maxFieldChange = -1.0;
   m_relFieldChange = -1.0;
-  m_firstDt        = -1.0;
 
   pp.query("exit_crit", m_exitCrit);
-  pp.query("first_dt", m_firstDt);
 }
 
 template <typename I, typename C, typename R, typename F>
@@ -120,14 +118,7 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::computeDt()
     pout() << "ItoKMCBackgroundEvaluator -- abort because no electrons are present" << endl;
   }
   else {
-    if ((this->m_timeStep) == 0 && (m_firstDt > 0.0)) {
-      newDt = m_firstDt;
-
-      this->m_timeCode = ItoKMCBackgroundEvaluator<I, C, R, F>::TimeCode::Hardcap;
-    }
-    else {
-      newDt = ItoKMCGodunovStepper<I, C, R, F>::computeDt();
-    }
+    newDt = ItoKMCGodunovStepper<I, C, R, F>::computeDt();
   }
 
   return newDt;
