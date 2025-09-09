@@ -205,7 +205,7 @@ def setup(log,
           output_dir,
           run_definition,
           structure=None,
-          dim=3, verbose=False, dry_run=False):
+          dim=3, verbose=False):
     """ Parse the parameter space definition and create output directory structure for
     all combinations in the parameter space.
     """
@@ -443,9 +443,6 @@ def main():
     # run options
     parser.add_argument("--dim", default=3, type=int,
                         help="Dimensionality of simulations. Must match chombo-discharge compilation.")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Don't schedule any slurm jobs, only create folder "
-                        "structures.")
     args = parser.parse_args()
 
     log = logging.getLogger(sys.argv[0])
@@ -466,7 +463,7 @@ def main():
 
     # set up database and study directory structures
     setup(log, args.output_dir, args.run_definition, dim=args.dim,
-                         verbose=args.verbose, dry_run=args.dry_run)
+                         verbose=args.verbose)
 
 
 if __name__ == '__main__':
