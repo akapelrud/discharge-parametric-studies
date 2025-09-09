@@ -33,7 +33,7 @@ AmrMesh.eb_ghost         = 2                 ## Set number of of ghost cells for
 AmrMesh.mg_interp_order  = 2                 ## Multigrid interpolation order
 AmrMesh.mg_interp_radius = 2                 ## Multigrid interpolation radius
 AmrMesh.mg_interp_weight = 2                 ## Multigrid interpolation weight (for least squares)
-AmrMesh.centroid_interp  = minmod	     ## Centroid interp stencils. linear, lsq, minmod, etc
+AmrMesh.centroid_interp  = minmod            ## Centroid interp stencils. linear, lsq, minmod, etc
 AmrMesh.eb_interp        = minmod            ## EB interp stencils. linear, taylor, minmod, etc
 AmrMesh.redist_radius    = 1                 ## Redistribution radius for hyperbolic conservation laws
 
@@ -62,7 +62,7 @@ Driver.write_loads                     = false            ## Write (accumulated)
 Driver.output_directory                = ./               ## Output directory
 Driver.output_names                    = simulation       ## Simulation output names
 Driver.max_plot_depth                  = -1               ## Restrict maximum plot depth (-1 => finest simulation level)
-Driver.max_chk_depth                   = -1               ## Restrict chechkpoint depth (-1 => finest simulation level)	
+Driver.max_chk_depth                   = -1               ## Restrict chechkpoint depth (-1 => finest simulation level)
 Driver.num_plot_ghost                  = 1                ## Number of ghost cells to include in plots
 Driver.plt_vars                        = levelset         ## 'tags', 'mpi_rank', 'levelset', 'loads'
 Driver.restart                         = 0                ## Restart step (less or equal to 0 implies fresh simulation)
@@ -199,10 +199,10 @@ McPhoto.deposition_cf        = halo          ## Coarse-fine deposition. Must be 
 # ====================================================================================================
 # Rod geometry
 # ====================================================================================================
-Rod.radius = 10E-3      	# Rod radius
-Rod.point2 = 0.0 20E-3 0.0	# One endpoint
-Rod.point1 = 0.0 99 0.0  	# Other endpoint
-Rod.live   = true        	# Live or not
+Rod.radius = 10E-3           # Rod radius
+Rod.point2 = 0.0 20E-3 0.0   # One endpoint
+Rod.point1 = 0.0 99 0.0      # Other endpoint
+Rod.live   = true            # Live or not
 
 # ====================================================================================================
 # ItoKMCGodunovStepper class options
@@ -235,7 +235,7 @@ ItoKMCGodunovStepper.max_particle_advection_diffusion_cfl  = 1.E99              
 ItoKMCGodunovStepper.fluid_advection_diffusion_cfl         = 0.5                  ## Advection-diffusion time step CFL restriction
 ItoKMCGodunovStepper.relax_dt_factor                       = 100.0                ## Relaxation time step restriction.
 ItoKMCGodunovStepper.min_dt                                = 0.0                  ## Minimum permitted time step
-ItoKMCGodunovStepper.max_dt                                = 1.E99                ## Maximum permitted time step
+ItoKMCGodunovStepper.max_dt                                = 2E-9                 ## Maximum permitted time step
 ItoKMCGodunovStepper.max_growth_dt                         = 1.E99                ## Maximum permitted time step increase (dt * factor)
 ItoKMCGodunovStepper.max_shrink_dt                         = 1.E99                ## Maximum permissible time step reduction (dt/factor)
 ItoKMCGodunovStepper.extend_conductivity                   = true                 ## Permit particles to live outside the EB to avoid bad gradients near EB
@@ -263,7 +263,7 @@ ItoKMCJSON.chemistry_file     = chemistry.json  ## Chemistry file. Must be suppl
 
 # Kinetic Monte Carlo solver settings. 
 ItoKMCJSON.max_new_particles  = 32              ## Maximum number of computational particles to produce in reaction step
-ItoKMCJSON.max_new_photons    = 32              ## Maximum number of computational photons to produce in reaction step	
+ItoKMCJSON.max_new_photons    = 32              ## Maximum number of computational photons to produce in reaction step
 ItoKMCJSON.increment_weights  = false           ## If true, increment existing particle weights rather than creating new ones
 ItoKMCJSON.crit_num           = 5               ## How many firings away from a Negative particle number?
 ItoKMCJSON.prop_eps           = 5.0             ## Maximum relative change in propensity function
@@ -285,7 +285,7 @@ ItoKMCStreamerTagger.tag_box1_hi       = 0.0 0.0 0.0  # these two corners
 ItoKMCStreamerTagger.buffer            = 8            # Grow tagged cells
 
 ItoKMCStreamerTagger.refine_curvature  = 1.0e99       # Curvature refinement
-ItoKMCStreamerTagger.coarsen_curvature = 1.0e99       # Curvature coarsening	
+ItoKMCStreamerTagger.coarsen_curvature = 1.0e99       # Curvature coarsening
 ItoKMCStreamerTagger.refine_alpha      = 1.0          # Set alpha refinement. Lower  => More mesh
 ItoKMCStreamerTagger.coarsen_alpha     = 0.1          # Set alpha coarsening. Higher => Less mesh
 ItoKMCStreamerTagger.max_coarsen_lvl   = 0            # Set max coarsening depth
@@ -321,13 +321,13 @@ DischargeInceptionStepper.K_inception       = 10                 # User-specifie
 DischargeInceptionStepper.plt_vars          = K inc alpha eta field poisson ## Plot variables
 
 # Particle integration controls
-DischargeInceptionStepper.min_phys_dx      = 1.E-10		## Minimum permitted physical step size
-DischargeInceptionStepper.max_phys_dx      = 1.E99		## Maximum permitted physical step size
-DischargeInceptionStepper.min_grid_dx      = 0.5		## Minimum permitted grid step size
-DischargeInceptionStepper.max_grid_dx      = 5.0		## Maximum permitted grid step size
-DischargeInceptionStepper.alpha_dx         = 5.0		## Step size relative to avalanche length
-DischargeInceptionStepper.grad_alpha_dx    = 0.1		## Maximum step size relative to alpha/grad(alpha)
-DischargeInceptionStepper.townsend_grid_dx = 2.0		## Space step to use for Townsend tracking
+DischargeInceptionStepper.min_phys_dx      = 1.E-10             ## Minimum permitted physical step size
+DischargeInceptionStepper.max_phys_dx      = 1.E99              ## Maximum permitted physical step size
+DischargeInceptionStepper.min_grid_dx      = 0.5                ## Minimum permitted grid step size
+DischargeInceptionStepper.max_grid_dx      = 5.0                ## Maximum permitted grid step size
+DischargeInceptionStepper.alpha_dx         = 5.0                ## Step size relative to avalanche length
+DischargeInceptionStepper.grad_alpha_dx    = 0.1                ## Maximum step size relative to alpha/grad(alpha)
+DischargeInceptionStepper.townsend_grid_dx = 2.0                ## Space step to use for Townsend tracking
 
 # Static mode
 DischargeInceptionStepper.rel_step_dU     = 0.025               ## Relative (%) voltage increase for each step
