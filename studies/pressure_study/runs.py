@@ -68,7 +68,7 @@ plasma_study_1 = {
             "pressure": {
                 "database": "inception_stepper",  # database dependency
                 "target": "chemistry.json",
-                "uri": ["gas", "law", "my_ideal_gas", "pressure"],
+                "uri": ["gas", "law", "ideal_gas", "pressure"],
                 "values": [1e5]  # np.arange(1e5, 11e5, 10e5).tolist()
                 },
             "K_min": { "values": [8] }, # needed by jobscript, written to parameters.json for each run
