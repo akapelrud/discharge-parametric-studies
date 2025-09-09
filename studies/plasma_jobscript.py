@@ -9,6 +9,7 @@ import sys
 import json
 import re
 import logging
+import itertools
 
 from subprocess import Popen, PIPE
 
@@ -174,8 +175,21 @@ if __name__ == '__main__':
 
     output_prefix = "voltage_"
 
+    MAX_BACKUPS = 10
+
+    index_path = Path('index.json')
+    # guard for reposting of the job
+    if index_path.is_file():
+        for i in itertools.count(start=0, step=1):
+            path_suggestion = index_path.with_suffix(f'.bak{i:d}')
+            if not path_suggestion.is_file():
+                shutil.move(index_path, path_suggestion)
+                break
+            if i > 100:  # simple guard
+                raise RuntimeError('Reached 100th iteration when trying to backup index.json')
+
     # write voltage index
-    with open('index.json', 'w') as voltage_index_file:
+    with open(index_path, 'w') as voltage_index_file:
         json.dump(dict(
             key=["voltage", "K", "particle_position"],
             prefix=output_prefix,
@@ -190,10 +204,23 @@ if __name__ == '__main__':
     # create run directories, copy files, set voltage and particle positions, etc.
     for i, row in enum_table:
         voltage_dir = Path(f'{output_prefix}{i:d}')
+
+        # don't delete old invocations
+        if voltage_dir.is_dir():
+            for i in itertools.count(start=0, step=1):
+                path_suggestion = voltage_dir.with_suffix(f'.bak{i:d}')
+                if not path_suggestion.is_dir():
+                    shutil.move(voltage_dir, path_suggestion)
+                    break
+                if i > MAX_BACKUPS:  # simple guard
+                    raise RuntimeError('Reached 100th iteration when trying to backup voltage directories')
+
         os.makedirs(voltage_dir, exist_ok=False)
 
         # further symlink program executable
-        os.symlink(Path('../program'), voltage_dir / 'program')
+        link_path = voltage_dir / 'program'
+        if not link_path.is_symlink():
+            os.symlink(Path('../program'), link_path)
 
         required_files = [Path(f).name for f in structure['required_files']]
         copy_files(log, required_files, voltage_dir)
