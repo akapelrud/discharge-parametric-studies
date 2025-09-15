@@ -7,10 +7,13 @@ Copyright © 2025 SINTEF Energi AS
 import json
 import numpy as np
 
+stepper_dir = '../../cases/DischargeInception/Rod/'
+plasma_dir = '../../cases/ItoKMC/StreamerIntegralCriterion/'
+
 inception_stepper = {
         'identifier': 'inception_stepper',
         'job_script': '../discharge_inception_jobscript.py',
-        'program': '../InceptionStepper/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
+        'program': stepper_dir + 'program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'output_directory': 'is_db',
         'job_script_dependencies': [
             '../../generic_array_job.sh',
@@ -20,7 +23,7 @@ inception_stepper = {
             ],
         'required_files': [
             'master.inputs',
-            '../InceptionStepper/transport_data.txt'
+            stepper_dir + 'transport_data.txt'
             ],
         'parameter_space': {
             "pressure": {
@@ -40,7 +43,7 @@ inception_stepper = {
 
 plasma_study_1 = {
         'identifier': 'photoion',
-        'program': '../Plasma/program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
+        'program': plasma_dir+'program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'job_script': '../plasma_jobscript.py',
         'job_script_dependencies': [
             '../../generic_array_job.sh',
@@ -50,9 +53,9 @@ plasma_study_1 = {
             ],
         'required_files': [
             'master.inputs',
-            '../Plasma/chemistry.json',
-            '../Plasma/detachment_rate.dat',
-            '../Plasma/electron_transport_data.dat',
+            plasma_dir+'chemistry.json',
+            plasma_dir+'detachment_rate.dat',
+            plasma_dir+'electron_transport_data.dat',
             '../../generic_array_job.sh',  # used at voltage step level
             '../../generic_array_job_jobscript.py'  # used at voltage step level
             ],

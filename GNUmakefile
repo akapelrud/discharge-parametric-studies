@@ -1,6 +1,6 @@
 
 TOPTARGETS := all clean
-SUBDIRS := studies/DischargeInception/. studies/Plasma/.
+SUBDIRS := cases/DischargeInception/Rod/. cases/ItoKMC/StreamerIntegralCriterion/.
 
 $(TOPTARGETS): $(SUBDIRS)
 $(SUBDIRS):
