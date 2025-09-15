@@ -251,11 +251,14 @@ def handle_combination(pspace, comb_dict):
             json.dump(value, json_file, indent=4)
 
 
-def copy_files(log, required_files, destination):
+def copy_files(log, required_files, destination, rel_path=Path('.')):
     """ Copy the required files to the destination
     """
     for file in required_files:
-        shutil.copy(file, destination, follow_symlinks=True)
+        fp = Path(file)
+        if not fp.is_absolute() and rel_path != Path('.'):
+            fp = rel_path / fp
+        shutil.copy(fp, destination, follow_symlinks=True)
         log.debug(f'copying in file: {file}')
 
 

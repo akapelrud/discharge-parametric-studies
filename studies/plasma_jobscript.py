@@ -223,6 +223,7 @@ if __name__ == '__main__':
         if not link_path.is_symlink():
             os.symlink(Path('../program'), link_path)
 
+        # grab original file names from structure
         required_files = [Path(f).name for f in structure['required_files']]
         copy_files(log, required_files, voltage_dir)
 

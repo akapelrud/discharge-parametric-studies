@@ -59,14 +59,14 @@ def parse_structure_from_input_file(run_definition_file: Path):
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
 
-            # look for top object, might crap out
+            # look for variable 'top_object', might crap out
             structure = module.top_object
         case _:
             raise ValueError('Wrong filetype for option --parameter-space-file')
     return structure
 
 
-def setup_env(log, obj, obj_type, output_dir, dim):
+def setup_env(log, obj, obj_type, output_dir, dim, rel_path):
     """ Set up output directory and copy in required files, program and job_script
     """
     ident = obj['identifier']
@@ -80,22 +80,22 @@ def setup_env(log, obj, obj_type, output_dir, dim):
     os.makedirs(out_dir, exist_ok=False)  # yes, crap out if it exists
     log.info(f"  * directory: {out_dir}")
 
-    shutil.copy(obj['job_script'], out_dir, follow_symlinks=True)
+    shutil.copy(rel_path / obj['job_script'], out_dir, follow_symlinks=True)
     log.info(f"  * job_script: {jobscript}")
     os.symlink(Path(obj['job_script']).name, out_dir / 'jobscript_symlink')
 
     program = obj['program'].format(DIMENSIONALITY=dim)
 
-    shutil.copy(program, out_dir, follow_symlinks=True)
+    shutil.copy(rel_path / program, out_dir, follow_symlinks=True)
     log.info(f"  * program: {program}")
 
     if 'required_files' in obj:
-        copy_files(log, obj['required_files'], out_dir)
+        copy_files(log, obj['required_files'], out_dir, rel_path)
     else:
         log.warning(f"no 'required_files' field in '{ident}'")
 
     if 'job_script_dependencies' in obj:
-        copy_files(log, obj['job_script_dependencies'], out_dir)
+        copy_files(log, obj['job_script_dependencies'], out_dir, rel_path)
     else:
         log.warning(f"no 'job_script_dependencies' field in '{ident}'")
 
@@ -134,7 +134,7 @@ def clean_definition(obj_def, keys, dim):
     return d
 
 
-def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
+def setup_job_dir(log, obj, output_name_pattern, rel_path, output_dir, i, combination):
     output_name = output_name_pattern.format(i=i)
     pspace = obj['parameter_space']
     keys = pspace.keys()
@@ -146,7 +146,7 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
 
     # make a copy of required files to the run directory
     log.debug("Copying in required files.")
-    copy_files(log, obj['required_files'], res_dir)
+    copy_files(log, obj['required_files'], res_dir, rel_path)
 
     # create program symlink
     os.symlink(
@@ -169,10 +169,10 @@ def setup_job_dir(log, obj, output_name_pattern, output_dir, i, combination):
     os.chdir(cwd)
 
 
-def setup_database(log, database_definition, output_dir, dim):
+def setup_database(log, database_definition, output_dir, dim, rel_path):
     df = database_definition  # alias
 
-    db_dir, program = setup_env(log, df, "database", output_dir, dim)
+    db_dir, program = setup_env(log, df, "database", output_dir, dim, rel_path)
 
     pspace = df['parameter_space']
     # The parse order of json objects are not guaranteed, so keep track of the
@@ -181,8 +181,8 @@ def setup_database(log, database_definition, output_dir, dim):
     return keys, db_dir
 
 
-def setup_study(log, study, output_dir, dim):
-    st_dir, program = setup_env(log, study, "study", output_dir, dim)
+def setup_study(log, study, output_dir, dim, rel_path):
+    st_dir, program = setup_env(log, study, "study", output_dir, dim, rel_path)
 
     pspace = study['parameter_space']  # alias used below
     keys = pspace.keys()
@@ -212,6 +212,7 @@ def setup(log,
 
     if structure is None:  # todo: merge structure and run_definition to one variable
         structure = parse_structure_from_input_file(run_definition)
+    structure_rel_include_path = run_definition.parent
 
     log.debug(structure)
 
@@ -247,7 +248,9 @@ def setup(log,
             missing_fields = verify_fields(database)
             if missing_fields:
                 raise ValueError(f'database is missing fields: {missing_fields}')
-            keys, db_dir = setup_database(log, database, output_dir, dim)
+            keys, db_dir = setup_database(log, database,
+                                          output_dir, dim,
+                                          structure_rel_include_path)
 
             databases[database['identifier']] = dict(
                     structure=database,
@@ -263,7 +266,9 @@ def setup(log,
         if missing_fields:
             raise ValueError(f'study \'{study["identifier"]}\' is missing fields:' +
                              f'{missing_fields}')
-        keys, combinations, st_dir, db_params = setup_study(log, study, output_dir, dim)
+        keys, combinations, st_dir, db_params = setup_study(log, study,
+                                                            output_dir, dim,
+                                                            structure_rel_include_path)
 
         studies[study['identifier']] = dict(
                 structure=study,
@@ -329,7 +334,7 @@ def setup(log,
     # fire of db slurm jobs
     for db_id, db in databases.items():
         db['job_id'] = schedule_slurm_jobs(log, db['structure'],
-                                           db['directory'],
+                                           db['directory'], structure_rel_include_path,
                                            sorted(db['combination_set']))
     log.info(LOG_SPACER_STR)
 
@@ -353,7 +358,7 @@ def setup(log,
 
         log.debug(f"deps: {dep_joblist}")
         schedule_slurm_jobs(log, study['structure'],
-                            study['directory'],
+                            study['directory'], structure_rel_include_path,
                             study['combinations'],
                             afterok_joblist=dep_joblist)
     log.info(LOG_SPACER_STR)
@@ -369,7 +374,7 @@ def get_sort_order(sort_list, orig_list):
                                  key=lambda x: orig_list.index(x[1]))]
 
 
-def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
+def schedule_slurm_jobs(log, structure, out_dir, rel_path, sorted_combinations,
                         afterok_joblist=None):
     num_jobs = len(sorted_combinations)
     if num_jobs < 1:
@@ -394,7 +399,9 @@ def schedule_slurm_jobs(log, structure, out_dir, sorted_combinations,
             ), resind_file, indent=4)
 
     for i, combination in enumerate(sorted_combinations):
-        setup_job_dir(log, structure, output_name_pattern, out_dir, i, combination)
+        setup_job_dir(log, structure,
+                      output_name_pattern, rel_path, out_dir,
+                      i, combination)
 
     cmdstr = f'sbatch --array=0-{num_jobs-1} --chdir="{out_dir}" ' + \
             f'--job-name="{structure["identifier"]}" '
