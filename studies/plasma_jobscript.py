@@ -229,13 +229,14 @@ if __name__ == '__main__':
 
         # reuse the combination writing code from the configurator / config_util, by
         # building a fake combination and parameter space:
+        particle_pos = [0.0, row[2][1], 0.0]  # strip X and Z coords
         comb_dict = dict(
                 voltage=row[0],
                 sphere_dist_props=[
-                    row[2],  # center position
+                    particle_pos,  # center position
                     0.5*parameters['geometry_radius']  # half the tip's radius
                     ],
-                single_particle_position=row[2]  # center position
+                single_particle_position=particle_pos# center position
                 )
         distribution_type = 'sphere distribution'
         pspace = {
