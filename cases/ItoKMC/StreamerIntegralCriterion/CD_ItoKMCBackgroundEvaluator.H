@@ -72,9 +72,14 @@ namespace Physics {
 
     protected:
       /*!
-	@brief Exit criterion -- if the background field changes by this much the simulation is terminated.
+	@brief Exit criterion for maximum field -- if the background field changes by this much the simulation is terminated.
       */
-      Real m_exitCrit;
+      Real m_maxFieldExitCrit;
+
+      /*!
+	@brief Exit criterion for relative field -- if the relative change in the background field in any cell changes by this much the simulation is terminated.
+      */
+      Real m_relFieldExitCrit;
 
       /*!
 	@brief Change in max field.

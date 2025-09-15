@@ -26,11 +26,12 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::ItoKMCBackgroundEvaluator(RefCountedPtr<I
 
   ParmParse pp("ItoKMCBackgroundEvaluator");
 
-  m_exitCrit       = std::numeric_limits<Real>::max();
+  m_maxFieldExitCrit       = std::numeric_limits<Real>::max();
   m_maxFieldChange = -1.0;
   m_relFieldChange = -1.0;
 
-  pp.query("exit_crit", m_exitCrit);
+  pp.query("max_field_exit_crit", m_maxFieldExitCrit);
+  pp.query("rel_field_exit_crit", m_relFieldExitCrit);
 }
 
 template <typename I, typename C, typename R, typename F>
@@ -107,15 +108,24 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::computeDt()
 
   const bool noElectronsPresent = false;
 
-  if ((m_maxFieldChange > m_exitCrit) && (m_exitCrit > 0.0)) {
-    newDt = 0.0;
+  bool abortCondition = false; // make sure all simultaneous abort reasons are stated in the log
 
-    pout() << "ItoKMCBackgroundEvaluator -- abort because field changed by more than specified threshold" << endl;
+  if ((m_maxFieldChange > m_maxFieldExitCrit) && (m_maxFieldExitCrit > 0.0)) {
+    pout() << "ItoKMCBackgroundEvaluator -- abort because the max field (in any cell) changed by more than specified threshold (max_field_exit_crit)" << endl;
+    abortCondition = true;
   }
-  else if (noElectronsPresent) { // Abort if we're out of electrons.
-    newDt = 0.0;
 
+  if ((m_relFieldChange > m_relFieldExitCrit) && (m_relFieldExitCrit > 0.0)) {
+    pout() << "ItoKMCBackgroundEvaluator -- abort because the relative field change in a cell is larger than specified threshold (rel_field_exit_crit)" << endl;
+    abortCondition = true;
+  }
+
+  if (noElectronsPresent) { // Abort if we're out of electrons.
     pout() << "ItoKMCBackgroundEvaluator -- abort because no electrons are present" << endl;
+    abortCondition = true;
+  }
+  if (abortCondition) {
+    newDt = 0.0;
   }
   else {
     newDt = ItoKMCGodunovStepper<I, C, R, F>::computeDt();

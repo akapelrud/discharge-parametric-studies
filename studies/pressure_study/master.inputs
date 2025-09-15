@@ -7,7 +7,8 @@ StreamerIntegralCriterion.basename  = pout
 # ====================================================================================================
 # ItoKMCBackgroundEvaluator class options
 # ====================================================================================================
-ItoKMCBackgroundEvaluator.exit_crit = 0.5    ## percentage per cell change in field due to space charge before stopping simulation
+ItoKMCBackgroundEvaluator.max_field_exit_crit = -1    ## percentage change in max field due to space charge before stopping simulation (-1: off)
+ItoKMCBackgroundEvaluator.rel_field_exit_crit = 0.25  ## percentage per cell change in field due to space charge before stopping simulation (-1: off)
 
 # ====================================================================================================
 # AmrMesh class options
