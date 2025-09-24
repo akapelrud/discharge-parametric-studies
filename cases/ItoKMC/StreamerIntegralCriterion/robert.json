@@ -1,0 +1,293 @@
+{
+    "gas" : {
+	"background species" : [
+	    {
+		"id" : "N2",            
+		"molar fraction" : {    
+		    "type" : "constant",
+		    "value": 0.8
+		}
+	    },	    
+	    {
+		"id": "O2",              
+		"molar fraction" : {     
+		    "type" : "constant", 
+		    "value" : 0.2        
+		}
+	    }
+
+	],
+	"law" : {
+	    "id" : "ideal_gas", 
+	    "plot" : true,      
+	    "ideal_gas" : {
+		"type" : "ideal",
+		"temperature" : 300,
+		"pressure" : 1E5
+	    }
+	}
+    },
+    "particle placement": {     
+	"method": "random", 
+	"species": "e"		
+    },    
+    "alpha": {
+	"type": "table vs E/N",
+	"file": "electron_transport_data.dat",
+	"header": "E/N (Td)\tTownsend ioniz. coef. alpha/N (m2)",
+	"E/N column" : 0,             
+	"alpha/N column" : 1,            
+	"min E/N" : 1,               
+	"max E/N" : 10000,
+	"points" : 1000,              
+	"spacing" : "exponential"
+    },
+    "eta": {
+	"type": "table vs E/N",
+	"file": "electron_transport_data.dat",
+	"header": "E/N (Td)\tTownsend attach. coef. eta/N (m2)",
+	"E/N column" : 0,             
+	"eta/N column" : 1,            
+	"min E/N" : 1,               
+	"max E/N" : 10000,
+	"points" : 1000,              
+	"spacing" : "exponential"
+    },    
+    "plasma species" :
+    [
+	{
+            "id": "e",          
+	    "Z" : -1,           
+	    "solver" : "ito",   
+	    "mobile" : true,    
+	    "diffusive" : true, 
+	    "mobility" : {
+		"type" : "table vs E/N",                     
+		"file" : "electron_transport_data.dat",                   
+		"header" : "E/N (Td)\tMobility *N (1/m/V/s)",
+		"E/N column" : 0,        
+		"mu*N column" : 1,       
+		"min E/N" : 1,           
+		"max E/N" : 2E6,         
+		"points" : 10000,         
+		"spacing" : "exponential"
+	    },
+	    "diffusion" : {
+		"type" : "table vs E/N",
+		"file" : "electron_transport_data.dat",
+		"header" : "E/N (Td)\tDiffusion coefficient *N (1/m/s)",
+		"E/N column" : 0,
+		"D*N column" : 1,
+		"min E/N" : 10,
+		"max E/N" : 2E6,
+		"points" : 10000,		
+		"spacing" : "exponential"
+	    },
+	    "temperature": {
+		"type": "table vs E/N",
+		"file": "electron_transport_data.dat",
+		"header" : "E/N (Td)\tMean energy (eV)",
+		"E/N column" : 0,
+		"eV column" : 1,
+		"min E/N" : 10,
+		"max E/N" : 2E6,
+		"points" : 1000,		
+		"spacing" : "exponential"
+	    },
+	    "initial particles" : [
+		{
+		    "sphere distribution" : {
+			"center" : [ 0, 20E-3, 0 ],
+			"radius" : 2E-3,         
+			"num particles": 100,   
+			"weight" : 1            
+		    }
+		},
+    {
+		    "single particle" : {
+			"position" : [ 0, 20E-3, 0 ],
+			"weight" : 10
+		    }
+    }
+	    ]
+        },
+	{
+	    // IMPORTANT: The mobility and diffusion coefficients for the ions need to be double checked, especially
+	    // as mu*N is a constant vs E/N
+	    "id": "N2+",            
+	    "Z" : 1,                
+	    "solver" : "ito",       
+	    "mobile" : true,        
+	    "diffusive" : true,     
+	    "mobility": {           
+		"type": "constant", 
+		"value": 2E-4       
+	    },
+	    "diffusion": {          
+		"type": "constant", 
+		"value": 5E-6
+	    }				
+	},
+	{
+	    // IMPORTANT: The mobility and diffusion coefficients for the ions need to be double checked, especially
+	    // as mu*N is a constant vs E/N	    
+            "id": "O2+",            
+	    "Z" : 1,                
+	    "solver" : "ito",       
+	    "mobile" : true,        
+	    "diffusive" : true,     
+	    "mobility": {           
+		"type": "constant", 
+		"value": 2E-4       
+	    },
+	    "diffusion": {          
+		"type": "constant", 
+		"value": 5E-6
+	    }		
+	},
+	// {
+        //     "id": "O-",             
+	//     "Z" : -1,               
+	//     "solver" : "ito",       
+	//     "mobile" : false,       
+	//     "diffusive" : false
+	// },		
+	{
+            "id": "O2-",        
+	    "Z" : -1,           
+	    "solver" : "ito",
+	    "mobile" : true,        
+	    "diffusive" : true,     
+	    "mobility": {           
+		"type": "constant", 
+		"value": 2E-4       
+	    },
+	    "diffusion": {          
+		"type": "constant", 
+		"value": 5E-6
+	    }
+	}
+    ],
+    "photon species":
+    [
+	{
+	    "id": "Y",                  
+	    "kappa": {                  
+		"type": "stochastic B", 
+		"chi min": 2.625E-2,    
+		"chi max": 1.5,         
+		"neutral": "O2"         
+	    }
+	}
+    ],
+    "plasma reactions":
+    [
+	{
+	    "reaction": "e + N2 -> e + e + N2+",             
+	    "description": "N2 ionization",             
+	    "type": "table vs E/N",                          
+	    "file" : "electron_transport_data.dat",                       
+	    "header" : "C25   N2    Ionization    15.60 eV", 
+	    "E/N column" : 0,                                
+	    "rate/N column" : 1,                             
+	    "min E/N" : 1.0,                                 
+	    "max E/N" : 10000.0,                              
+	    "num points" : 1000,                             
+	    "spacing" : "exponential"
+	},
+	{
+	    "reaction": "e + O2 -> e + e + O2+",             
+	    "description": "O2 ionization",
+	    "type": "table vs E/N",                          
+	    "file" : "electron_transport_data.dat",                       
+	    "header" : "C42   O2    Ionization    12.06 eV", 
+	    "E/N column" : 0,                                
+	    "rate/N column" : 1,                             
+	    "min E/N" : 1.0,                                 
+	    "max E/N" : 10000.0,                              
+	    "num points" : 1000,
+	    "spacing" : "exponential"                       
+	},
+	{
+	    // Note: Strictly speaking this attaches into O-, but O- converts to O2-
+	    "reaction": "e + O2 -> O2-",         
+	    "description": "Dissociative attachment",
+	    "type": "table vs E/N",              
+	    "file" : "electron_transport_data.dat",           
+	    "header" : "C27   O2    Attachment", 
+	    "E/N column" : 0,                    
+	    "rate/N column" : 1,                 
+	    "min E/N" : 1.0,                     
+	    "max E/N" : 10000.0,                  
+	    "num points" : 1000,                 
+	    "spacing" : "exponential",
+            "include_dt_calc": false
+	},
+	{
+	    "reaction": "e + O2 + O2 -> O2- + O2", 
+	    "description": "Three-body attachment",
+	    "type": "table vs E/N",              
+	    "file" : "electron_transport_data.dat",       
+	    "header" : "C26   O2    Attachment", 
+	    "E/N column" : 0,                    
+	    "rate/N column" : 1,                 
+	    "min E/N" : 1.0,                     
+	    "max E/N" : 1000.0,                  
+	    "num points" : 10000,                 
+	    "spacing" : "exponential",           
+	    "scale rate/N": 1.0E-6,
+            "include_dt_calc": false            
+	},
+	{
+	    "reaction": "O2- + @ -> e + (O2)",
+	    "@": ["O2", "N2"],
+	    "description": "Detachment",
+	    "type": "table vs E/N",              
+	    "file" : "detachment_rate.dat",       
+	    "E/N column" : 0,                    
+	    "rate/N column" : 1,                 
+	    "min E/N" : 1.0,                     
+	    "max E/N" : 1000.0,                  
+	    "num points" : 10000,
+	    "spacing" : "exponential",
+            "include_dt_calc": false            
+	},		
+	{
+	    "reaction": "e + N2 -> e + Y + (N2)",    
+	    "description": "EUV generation",         
+	    "type": "table vs E/N",                          
+	    "file" : "electron_transport_data.dat",                   
+	    "header" : "C25   N2    Ionization    15.60 eV", 
+	    "E/N column" : 0,                                
+	    "rate/N column" : 1,                             
+	    "min E/N" : 1.0,                                 
+	    "max E/N" : 10000.0,                              
+	    "num points" : 1000,                             
+	    "spacing" : "exponential",                       
+	    "efficiency": 0.1,                               
+	    "quenching pressure": 4000.0,
+            "include_dt_calc": false            
+	}
+    ],
+    "photoionization":
+    [
+	{
+	    "reaction": "Y + (O2) -> e + O2+"
+	}
+    ],
+    "electrode emission":
+    [
+	{
+	    "reaction": "N2+ -> @",
+	    "@": ["e", "(null)"],
+	    "efficiencies": [1E-3, 0.999]
+	},
+	{
+	    "reaction": "O2+ -> @",
+	    "@": ["e", "(null)"],
+	    "efficiencies": [1E-3, 0.999]
+	}	
+    ]
+
+	
+}

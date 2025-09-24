@@ -26,9 +26,11 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::ItoKMCBackgroundEvaluator(RefCountedPtr<I
 
   ParmParse pp("ItoKMCBackgroundEvaluator");
 
-  m_maxFieldExitCrit       = std::numeric_limits<Real>::max();
-  m_maxFieldChange = -1.0;
-  m_relFieldChange = -1.0;
+  m_maxFieldExitCrit = std::numeric_limits<Real>::max();
+  m_maxFieldChange   = -1.0;
+  m_relFieldChange   = -1.0;
+  m_electrodeCharge  = 0.0;
+  m_ohmicCharge      = 0.0;
 
   pp.query("max_field_exit_crit", m_maxFieldExitCrit);
   pp.query("rel_field_exit_crit", m_relFieldExitCrit);
@@ -88,9 +90,13 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::advance(const Real a_dt)
   const Real actualDt = ItoKMCGodunovStepper<I, C, R, F>::advance(a_dt);
 
   const std::pair<Real, Real> fieldChange = this->evaluateSpaceChargeEffects();
+  const Real                  electrodeQ  = this->integrateElectrodeSurfaceCharge();
+  const Real                  ohmicQ      = this->integrateOhmicCharge();
 
-  m_relFieldChange = fieldChange.first;
-  m_maxFieldChange = fieldChange.second;
+  m_relFieldChange  = fieldChange.first;
+  m_maxFieldChange  = fieldChange.second;
+  m_electrodeCharge = this->integrateElectrodeSurfaceCharge();
+  m_ohmicCharge     = this->integrateOhmicCharge();
 
   return actualDt;
 }
@@ -111,12 +117,16 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::computeDt()
   bool abortCondition = false; // make sure all simultaneous abort reasons are stated in the log
 
   if ((m_maxFieldChange > m_maxFieldExitCrit) && (m_maxFieldExitCrit > 0.0)) {
-    pout() << "ItoKMCBackgroundEvaluator -- abort because the max field (in any cell) changed by more than specified threshold (max_field_exit_crit)" << endl;
+    pout()
+      << "ItoKMCBackgroundEvaluator -- abort because the max field (in any cell) changed by more than specified threshold (max_field_exit_crit)"
+      << endl;
     abortCondition = true;
   }
 
   if ((m_relFieldChange > m_relFieldExitCrit) && (m_relFieldExitCrit > 0.0)) {
-    pout() << "ItoKMCBackgroundEvaluator -- abort because the relative field change in a cell is larger than specified threshold (rel_field_exit_crit)" << endl;
+    pout()
+      << "ItoKMCBackgroundEvaluator -- abort because the relative field change in a cell is larger than specified threshold (rel_field_exit_crit)"
+      << endl;
     abortCondition = true;
   }
 
@@ -143,10 +153,18 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::printStepReport() noexcept
     pout() << "ItoKMCBackgroundEvaluator::printStepReport" << endl;
   }
 
+  std::ios::fmtflags oldFlags = pout().flags();
+
   ItoKMCGodunovStepper<I, C, R, F>::printStepReport();
+
+  // Append the step report.
   const std::string whitespace = "                                   ";
-  pout() << whitespace + "Delta E(max) = " << 100.0 * m_maxFieldChange << " (%)" << endl;
-  pout() << whitespace + "Delta E(rel) = " << 100.0 * m_relFieldChange << " (%)" << endl;
+  pout() << whitespace + "Delta E(max)  = " << 100.0 * m_maxFieldChange << " (%)" << endl;
+  pout() << whitespace + "Delta E(rel)  = " << 100.0 * m_relFieldChange << " (%)" << endl;
+  pout() << whitespace + "Q (electrode) = " << std::scientific << m_electrodeCharge << " (C)" << endl;
+  pout() << whitespace + "Q (ohmic)     = " << std::scientific << m_ohmicCharge << " (C)" << endl;
+
+  pout().flags(oldFlags);
 }
 
 template <typename I, typename C, typename R, typename F>
@@ -279,6 +297,73 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::evaluateSpaceChargeEffects() noexcept
   maxChange = maxSpaceChargeField / maxBackgroundField - 1.0;
 
   return std::make_pair(relChange, maxChange);
+}
+
+template <typename I, typename C, typename R, typename F>
+Real
+ItoKMCBackgroundEvaluator<I, C, R, F>::integrateElectrodeSurfaceCharge() const noexcept
+{
+  CH_TIME("ItoKMCBackgroundEvaluator::integrateElectrodeSurfaceCharge");
+  if (this->m_verbosity > 5) {
+    pout() << "ItoKMCBackgroundEvaluator::integrateElectrodeSurfaceCharge" << endl;
+  }
+
+  Real Enorm = 0.0;
+
+  const Real eps = Units::eps0 * this->m_computationalGeometry->getGasPermittivity();
+
+  const MFAMRCellData& electricFieldCell = (this->m_fieldSolver)->getElectricField();
+  const MFAMRCellData& permittivityCell  = (this->m_fieldSolver)->getPermittivityCell();
+
+  const EBAMRCellData electricField = (this->m_amr)->alias(this->m_plasmaPhase, electricFieldCell);
+  const EBAMRCellData permittivity  = (this->m_amr)->alias(this->m_plasmaPhase, permittivityCell);
+
+  for (int lvl = 0; lvl <= (this->m_amr)->getFinestLevel(); lvl++) {
+    const DisjointBoxLayout& dbl   = (this->m_amr)->getGrids(this->m_fluidRealm)[lvl];
+    const EBISLayout&        ebisl = (this->m_amr)->getEBISLayout(this->m_fluidRealm, this->m_plasmaPhase)[lvl];
+    const DataIterator&      dit   = dbl.dataIterator();
+    const Real               dx    = (this->m_amr)->getDx()[lvl];
+    const Real               dA    = std::pow(dx, SpaceDim - 1);
+
+    const int numBoxes = dit.size();
+
+#pragma omp parallel for schedule(runtime);
+    for (int mybox = 0; mybox < numBoxes; mybox++) {
+      const DataIndex&     din        = dit[mybox];
+      const EBISBox&       ebisbox    = ebisl[din];
+      const EBCellFAB&     E          = (*electricField[lvl])[din];
+      const EBCellFAB&     eps        = (*permittivity[lvl])[din];
+      const BaseFab<bool>& validCells = (*(this->m_amr)->getValidCells(this->m_fluidRealm)[lvl])[din];
+
+      auto kernel = [&](const VolIndex& vof) -> void {
+        if (ebisbox.isIrregular(vof.gridIndex()) && validCells(vof.gridIndex(), 0)) {
+          const RealVect normalVector = ebisbox.normal(vof);
+          const RealVect e            = RealVect(D_DECL(E(vof, 0), E(vof, 1), E(vof, 2)));
+          const Real     areaFrac     = ebisbox.bndryArea(vof);
+
+          Enorm += eps(vof, 0) * e.dotProduct(normalVector) * areaFrac * dA;
+        }
+      };
+
+      VoFIterator& vofit = (*(this->m_amr)->getVofIterator(this->m_fluidRealm, this->m_plasmaPhase)[lvl])[din];
+
+      BoxLoops::loop(vofit, kernel);
+    }
+  }
+
+  return eps * ParallelOps::sum(Enorm);
+}
+
+template <typename I, typename C, typename R, typename F>
+Real
+ItoKMCBackgroundEvaluator<I, C, R, F>::integrateOhmicCharge() const noexcept
+{
+  CH_TIME("ItoKMCBackgroundEvaluator::integrateOhmicCharge");
+  if (this->m_verbosity > 5) {
+    pout() << "ItoKMCBackgroundEvaluator::integrateOhmicCharge" << endl;
+  }
+
+  return 0.0;
 }
 
 #include <CD_NamespaceFooter.H>
