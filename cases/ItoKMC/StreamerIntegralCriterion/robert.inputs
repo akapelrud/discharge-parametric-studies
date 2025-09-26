@@ -48,13 +48,13 @@ Driver.ebis_memory_load_balance        = false            ## If using Chombo geo
 Driver.output_dt                       = -1.0             ## Output interval (values <= 0 enforces step-based output)
 Driver.plot_interval                   = 10               ## Plot interval
 Driver.checkpoint_interval             = 1000             ## Checkpoint interval
-Driver.regrid_interval                 = 5                ## Regrid interval
+Driver.regrid_interval                 = 3                ## Regrid interval
 Driver.write_regrid_files              = false            ## Write regrid files or not.
 Driver.write_restart_files             = false            ## Write restart files or not
-Driver.initial_regrids                 = 5                ## Number of initial regrids
+Driver.initial_regrids                 = 7                ## Number of initial regrids
 Driver.do_init_load_balance            = false            ## If true, load balance the first step in a fresh simulation.
 Driver.start_time                      = 0                ## Start time (fresh simulations only)
-Driver.stop_time                       = 1.0              ## Stop time
+Driver.stop_time                       = 5E-9             ## Stop time
 Driver.max_steps                       = 1000             ## Maximum number of steps
 Driver.geometry_only                   = false            ## Special option that ONLY plots the geometry
 Driver.write_memory                    = false            ## Write MPI memory report
@@ -66,10 +66,10 @@ Driver.max_chk_depth                   = -1               ## Restrict chechkpoin
 Driver.num_plot_ghost                  = 1                ## Number of ghost cells to include in plots
 Driver.plt_vars                        = levelset         ## 'tags', 'mpi_rank', 'levelset', 'loads'
 Driver.restart                         = 0                ## Restart step (less or equal to 0 implies fresh simulation)
-Driver.allow_coarsening                = true             ## Allows removal of grid levels according to CellTagger
+Driver.allow_coarsening                = false            ## Allows removal of grid levels according to CellTagger
 Driver.grow_geo_tags                   = 2                ## How much to grow tags when using geometry-based refinement. 
-Driver.refine_angles                   = 45.              ## Refine cells if angle between elements exceed this value.
-Driver.refine_electrodes               = 0                ## Refine electrode surfaces. -1 => equal to refine_geometry
+Driver.refine_angles                   = 5.               ## Refine cells if angle between elements exceed this value.
+Driver.refine_electrodes               = 2                ## Refine electrode surfaces. -1 => equal to refine_geometry
 Driver.refine_dielectrics              = 0                ## Refine dielectric surfaces. -1 => equal to refine_geometry
 
 
@@ -236,8 +236,8 @@ ItoKMCGodunovStepper.fluid_advection_diffusion_cfl         = 0.5                
 ItoKMCGodunovStepper.relax_dt_factor                       = 100.0                ## Relaxation time step restriction.
 ItoKMCGodunovStepper.min_dt                                = 0.0                  ## Minimum permitted time step
 ItoKMCGodunovStepper.max_dt                                = 1.E99                ## Maximum permitted time step
-ItoKMCGodunovStepper.max_growth_dt                         = 1.E99                ## Maximum permitted time step increase (dt * factor)
-ItoKMCGodunovStepper.max_shrink_dt                         = 1.E99                ## Maximum permissible time step reduction (dt/factor)
+ItoKMCGodunovStepper.max_growth_dt                         = 1.2                ## Maximum permitted time step increase (dt * factor)
+ItoKMCGodunovStepper.max_shrink_dt                         = 1.2                ## Maximum permissible time step reduction (dt/factor)
 ItoKMCGodunovStepper.extend_conductivity                   = true                 ## Permit particles to live outside the EB to avoid bad gradients near EB
 ItoKMCGodunovStepper.smooth_conductivity                   = false                ## Use bilinear smoothing on the conductivity.
 ItoKMCGodunovStepper.cond_filter_num                       = 0                    ## Number of filterings for conductivity
@@ -287,9 +287,8 @@ ItoKMCStreamerTagger.buffer            = 0            # Grow tagged cells
 ItoKMCStreamerTagger.refine_curvature  = 1.0e99       # Curvature refinement
 ItoKMCStreamerTagger.coarsen_curvature = 1.0e99       # Curvature coarsening
 ItoKMCStreamerTagger.refine_alpha      = 1.0          # Set alpha refinement. Lower  => More mesh
-ItoKMCStreamerTagger.coarsen_alpha     = 0.1          # Set alpha coarsening. Higher => Less mesh
-ItoKMCStreamerTagger.max_coarsen_lvl   = 0            # Set max coarsening depth
-
+ItoKMCStreamerTagger.coarsen_alpha     = 0.1         # Set alpha coarsening. Higher => Less mesh
+ItoKMCStreamerTagger.max_coarsen_lvl   = 4            # Set max coarsening depth
 
 # ====================================================================================================
 # !! BELOW THIS POINT !!
@@ -364,3 +363,5 @@ lightning_impulse.tail_time  = 50E-6
 # Other physics adjustable physics data
 # ====================================================================================================
 DischargeInception.second_townsend = 1.E-3
+
+

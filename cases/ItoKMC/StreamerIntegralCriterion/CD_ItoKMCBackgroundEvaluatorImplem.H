@@ -220,16 +220,24 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::evaluateSpaceChargeEffects() noexcept
 
   EBAMRCellData poissonNorm;
   EBAMRCellData laplaceNorm;
+  EBAMRCellData poissonField;
+  EBAMRCellData laplaceField;
   EBAMRCellData deltaE;
 
   (this->m_amr)->allocate(poissonNorm, this->m_fluidRealm, this->m_plasmaPhase, 1);
   (this->m_amr)->allocate(laplaceNorm, this->m_fluidRealm, this->m_plasmaPhase, 1);
+  (this->m_amr)->allocate(poissonField, this->m_fluidRealm, this->m_plasmaPhase, SpaceDim);
+  (this->m_amr)->allocate(laplaceField, this->m_fluidRealm, this->m_plasmaPhase, SpaceDim);
   (this->m_amr)->allocate(deltaE, this->m_fluidRealm, this->m_plasmaPhase, 1);
 
   // Get the fields in the plasma phase -- the actual field and the background field.
   const MFAMRCellData electricField = (this->m_fieldSolver)->getElectricField();
-  const EBAMRCellData poissonField  = (this->m_amr)->alias(this->m_plasmaPhase, electricField);
-  const EBAMRCellData laplaceField  = (this->m_amr)->alias(this->m_plasmaPhase, m_backgroundField);
+
+  DataOps::copy(poissonField, (this->m_amr)->alias(this->m_plasmaPhase, electricField));
+  DataOps::copy(laplaceField, (this->m_amr)->alias(this->m_plasmaPhase, m_backgroundField));
+
+  (this->m_amr)->interpToCentroids(poissonField, this->m_fluidRealm, this->m_plasmaPhase);
+  (this->m_amr)->interpToCentroids(laplaceField, this->m_fluidRealm, this->m_plasmaPhase);
 
   // Compute the field magnitude, and then the relative change in field magnitude.
   DataOps::vectorLength(poissonNorm, poissonField);
@@ -314,9 +322,13 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::integrateElectrodeSurfaceCharge() const n
 
   const MFAMRCellData& electricFieldCell = (this->m_fieldSolver)->getElectricField();
   const MFAMRCellData& permittivityCell  = (this->m_fieldSolver)->getPermittivityCell();
+  const EBAMRCellData  permittivity      = (this->m_amr)->alias(this->m_plasmaPhase, permittivityCell);
 
-  const EBAMRCellData electricField = (this->m_amr)->alias(this->m_plasmaPhase, electricFieldCell);
-  const EBAMRCellData permittivity  = (this->m_amr)->alias(this->m_plasmaPhase, permittivityCell);
+  // Allocates data and computes the electric field on the cell centroid(s).
+  EBAMRCellData electricField;
+  (this->m_amr)->allocate(electricField, this->m_fluidRealm, this->m_plasmaPhase, SpaceDim);
+  DataOps::copy(electricField, (this->m_amr)->alias(this->m_plasmaPhase, electricFieldCell));
+  (this->m_amr)->interpToCentroids(electricField, this->m_fluidRealm, this->m_plasmaPhase);
 
   for (int lvl = 0; lvl <= (this->m_amr)->getFinestLevel(); lvl++) {
     const DisjointBoxLayout& dbl   = (this->m_amr)->getGrids(this->m_fluidRealm)[lvl];

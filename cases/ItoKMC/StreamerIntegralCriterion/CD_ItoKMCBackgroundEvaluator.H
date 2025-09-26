@@ -99,7 +99,7 @@ namespace Physics {
       /*!
         @brief Total charge that left through the electrode in the last time step.
       */
-      Real m_ohmicCharge;      
+      Real m_ohmicCharge;
 
       /*!
 	@brief For storing the background field.
@@ -135,7 +135,7 @@ namespace Physics {
       */
       [[nodiscard]]
       virtual Real
-      integrateOhmicCharge() const noexcept;      
+      integrateOhmicCharge() const noexcept;
     };
   } // namespace ItoKMC
 } // namespace Physics
