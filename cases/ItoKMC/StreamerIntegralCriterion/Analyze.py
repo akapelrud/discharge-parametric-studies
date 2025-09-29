@@ -18,8 +18,8 @@ Fields extracted per block:
   8. Sum (src_optical)
 
 Derived:
-  9.  d/dt Q (ohmic)
- 10.  d/dt Q (electrode)
+  9.  I (ohmic)
+ 10.  I (electrode)
 """
 
 import argparse
@@ -66,8 +66,8 @@ FIELDS = [
     "Q (electrode)",
     "Sum (phi_optical)",
     "Sum (src_optical)",
-    "d/dt Q (ohmic)",
-    "d/dt Q (electrode)",
+    "I (ohmic)",
+    "I (electrode)",
 ]
 
 BLOCK_START = re.compile(r'^\s*Driver::Time step report\b')
@@ -82,8 +82,8 @@ COMMENT_HEADER = [
     "# Column 6:  Q (electrode)           (Savitzky–Golay smoothed if --sg)",
     "# Column 7:  Sum (phi_optical)",
     "# Column 8:  Sum (src_optical)",
-    "# Column 9:  d/dt Q (ohmic)          (from Column 5; low-pass if --lp)",
-    "# Column 10: d/dt Q (electrode)      (from Column 6; low-pass if --lp)",
+    "# Column 9:  I (ohmic)               (from Column 5; low-pass if --lp)",
+    "# Column 10: I (electrode)           (from Column 6; low-pass if --lp)",
 ]
 
 # ---------- Parsing ----------
@@ -365,8 +365,8 @@ def write_dat_aligned_with_comments(out_path: str,
         "Q (electrode)": np.array(Qe_s, dtype=float),
         "Sum (phi_optical)": np.array(Sphi, dtype=float),
         "Sum (src_optical)": np.array(Ssrc, dtype=float),
-        "d/dt Q (ohmic)": np.array(dQo_dt, dtype=float),
-        "d/dt Q (electrode)": np.array(dQe_dt, dtype=float),
+        "I (ohmic)": np.array(dQo_dt, dtype=float),
+        "I (electrode)": np.array(dQe_dt, dtype=float),
     }
 
 # ---------- Plotting ----------
@@ -389,8 +389,8 @@ def plot_2x4(time: np.ndarray, series: Dict[str, np.ndarray]) -> None:
         "Q (electrode)",
         "Sum (phi_optical)",
         "Sum (src_optical)",
-        "d/dt Q (ohmic)",
-        "d/dt Q (electrode)",
+        "I (ohmic)",
+        "I (electrode)",
     ]
 
     # Units for y-axis labels (per your specification)
@@ -401,8 +401,8 @@ def plot_2x4(time: np.ndarray, series: Dict[str, np.ndarray]) -> None:
         "Q (electrode)": "C",
         "Sum (phi_optical)": "1",
         "Sum (src_optical)": "1/s",
-        "d/dt Q (ohmic)": "A",
-        "d/dt Q (electrode)": "A",
+        "I (ohmic)": "A",
+        "I (electrode)": "A",
     }
 
     fig, axes = plt.subplots(2, 4, figsize=(24, 12), sharex=True)
