@@ -83,9 +83,9 @@
 	    "initial particles" : [
 		{
 		    "sphere distribution" : {
-			"center" : [ 0, 20E-3, 0 ],
-			"radius" : 2E-3,         
-			"num particles": 100,   
+			"center" : [ 0, 19E-3, 0 ],
+			"radius" : 200E-6,         
+			"num particles": 10,   
 			"weight" : 1            
 		    }
 		},

@@ -405,7 +405,7 @@ def plot_2x4(time: np.ndarray, series: Dict[str, np.ndarray]) -> None:
         "d/dt Q (electrode)": "A",
     }
 
-    fig, axes = plt.subplots(2, 4, figsize=(16, 8), sharex=True)
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12), sharex=True)
     axes = axes.ravel()
 
     # Same style for all — no markers

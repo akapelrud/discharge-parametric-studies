@@ -164,6 +164,7 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::printStepReport() noexcept
 
   // Append the step report.
   const std::string whitespace = "                                   ";
+  pout().precision(12);
   pout() << whitespace + "Delta E(max)      = " << 100.0 * m_maxFieldChange << " (%)" << endl;
   pout() << whitespace + "Delta E(rel)      = " << 100.0 * m_relFieldChange << " (%)" << endl;
   pout() << whitespace + "Q (electrode)     = " << std::scientific << m_electrodeCharge << " (C)" << endl;
