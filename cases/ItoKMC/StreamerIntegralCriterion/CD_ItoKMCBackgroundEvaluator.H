@@ -102,6 +102,21 @@ namespace Physics {
       Real m_ohmicCharge;
 
       /*!
+        @brief Integrated optical emissions (phi)
+      */
+      Real m_sumOpticalPhi;
+
+      /*!
+        @brief Integrated optical emissions (source term)
+      */
+      Real m_sumOpticalSrc;
+
+      /*!
+        @brief Name of the optical solver
+      */
+      std::string m_opticalSolver;
+
+      /*!
 	@brief For storing the background field.
 	@details This field is space- and surface-charge free and is filled by computeBackgroundField
       */
@@ -136,6 +151,14 @@ namespace Physics {
       [[nodiscard]]
       virtual Real
       integrateOhmicCharge() const noexcept;
+
+      /*!
+        @brief Integrate the sum of the optical excitations.
+        @details This returns the sum of the emissions, and the sum of the excitations.
+      */
+      [[nodiscard]]
+      virtual std::pair<Real, Real>
+      integrateOpticalExcitations() const noexcept;
     };
   } // namespace ItoKMC
 } // namespace Physics

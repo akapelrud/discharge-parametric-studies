@@ -259,7 +259,7 @@ ItoKMCGodunovStepper.plot_particles                        = true
 # ====================================================================================================
 ItoKMCJSON.verbose            = false           ## Turn on/off verbosity
 ItoKMCJSON.debug              = false           ## Turn on/off debugging
-ItoKMCJSON.chemistry_file     = robert.json  ## Chemistry file. Must be supplied by the user. 
+ItoKMCJSON.chemistry_file     = chemistry.json  ## Chemistry file. Must be supplied by the user. 
 
 # Kinetic Monte Carlo solver settings. 
 ItoKMCJSON.max_new_particles  = 16              ## Maximum number of computational particles to produce in reaction step

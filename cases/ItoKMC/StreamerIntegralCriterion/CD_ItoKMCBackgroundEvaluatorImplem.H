@@ -31,9 +31,11 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::ItoKMCBackgroundEvaluator(RefCountedPtr<I
   m_relFieldChange   = -1.0;
   m_electrodeCharge  = 0.0;
   m_ohmicCharge      = 0.0;
+  m_opticalSolver    = "2PN2";
 
   pp.query("max_field_exit_crit", m_maxFieldExitCrit);
   pp.query("rel_field_exit_crit", m_relFieldExitCrit);
+  pp.query("optical_solver", m_opticalSolver);
 }
 
 template <typename I, typename C, typename R, typename F>
@@ -89,14 +91,17 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::advance(const Real a_dt)
 
   const Real actualDt = ItoKMCGodunovStepper<I, C, R, F>::advance(a_dt);
 
-  const std::pair<Real, Real> fieldChange = this->evaluateSpaceChargeEffects();
-  const Real                  electrodeQ  = this->integrateElectrodeSurfaceCharge();
-  const Real                  ohmicQ      = this->integrateOhmicCharge();
+  const std::pair<Real, Real> fieldChange      = this->evaluateSpaceChargeEffects();
+  const Real                  electrodeQ       = this->integrateElectrodeSurfaceCharge();
+  const Real                  ohmicQ           = this->integrateOhmicCharge();
+  const std::pair<Real, Real> opticalEmissions = this->integrateOpticalExcitations();
 
   m_relFieldChange  = fieldChange.first;
   m_maxFieldChange  = fieldChange.second;
-  m_electrodeCharge = this->integrateElectrodeSurfaceCharge();
-  m_ohmicCharge     = this->integrateOhmicCharge();
+  m_electrodeCharge = electrodeQ;
+  m_ohmicCharge     = ohmicQ;
+  m_sumOpticalPhi   = opticalEmissions.first;
+  m_sumOpticalSrc   = opticalEmissions.second;
 
   return actualDt;
 }
@@ -159,10 +164,12 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::printStepReport() noexcept
 
   // Append the step report.
   const std::string whitespace = "                                   ";
-  pout() << whitespace + "Delta E(max)  = " << 100.0 * m_maxFieldChange << " (%)" << endl;
-  pout() << whitespace + "Delta E(rel)  = " << 100.0 * m_relFieldChange << " (%)" << endl;
-  pout() << whitespace + "Q (electrode) = " << std::scientific << m_electrodeCharge << " (C)" << endl;
-  pout() << whitespace + "Q (ohmic)     = " << std::scientific << m_ohmicCharge << " (C)" << endl;
+  pout() << whitespace + "Delta E(max)      = " << 100.0 * m_maxFieldChange << " (%)" << endl;
+  pout() << whitespace + "Delta E(rel)      = " << 100.0 * m_relFieldChange << " (%)" << endl;
+  pout() << whitespace + "Q (electrode)     = " << std::scientific << m_electrodeCharge << " (C)" << endl;
+  pout() << whitespace + "Q (ohmic)         = " << std::scientific << m_ohmicCharge << " (C)" << endl;
+  pout() << whitespace + "Sum (phi_optical) = " << std::scientific << m_sumOpticalPhi << endl;
+  pout() << whitespace + "Sum (src_optical) = " << std::scientific << m_sumOpticalSrc << " (1/s)" << endl;
 
   pout().flags(oldFlags);
 }
@@ -376,6 +383,77 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::integrateOhmicCharge() const noexcept
   }
 
   return 0.0;
+}
+
+template <typename I, typename C, typename R, typename F>
+std::pair<Real, Real>
+ItoKMCBackgroundEvaluator<I, C, R, F>::integrateOpticalExcitations() const noexcept
+{
+  CH_TIME("ItoKMCBackgroundEvaluator::integrateOpticalExcitations");
+  if (this->m_verbosity > 5) {
+    pout() << "ItoKMCBackgroundEvaluator::integrateOpticalExcitations" << endl;
+  }
+
+  const RefCountedPtr<ItoKMCJSON>& physics = static_cast<const RefCountedPtr<ItoKMCJSON>&>(this->m_physics);
+
+  Real sumPhi = 0.0;
+  Real sumSrc = 0.0;
+
+  for (CdrIterator<CdrSolver> solverIt = (this->m_cdr)->iterator(); solverIt.ok(); ++solverIt) {
+    const RefCountedPtr<CdrSolver>& solver = solverIt();
+
+    if (solver->getName() == m_opticalSolver) {
+      for (int lvl = 0; lvl <= (this->m_amr)->getFinestLevel(); lvl++) {
+        const DisjointBoxLayout& dbl   = (this->m_amr)->getGrids(this->m_fluidRealm)[lvl];
+        const EBISLayout&        ebisl = (this->m_amr)->getEBISLayout(this->m_fluidRealm, this->m_plasmaPhase)[lvl];
+        const DataIterator&      dit   = dbl.dataIterator();
+        const Real               dx    = (this->m_amr)->getDx()[lvl];
+        const Real               dV    = std::pow(dx, SpaceDim);
+
+        const int numBoxes = dit.size();
+
+#pragma omp parallel for schedule(runtime);
+        for (int mybox = 0; mybox < numBoxes; mybox++) {
+          const DataIndex&     din        = dit[mybox];
+          const Box            cellBox    = dbl[din];
+          const EBISBox&       ebisbox    = ebisl[din];
+          const BaseFab<bool>& validCells = (*(this->m_amr)->getValidCells(this->m_fluidRealm)[lvl])[din];
+
+          const EBCellFAB& phi = (*(solver->getPhi()[lvl]))[din];
+          const EBCellFAB& src = (*(solver->getSource()[lvl]))[din];
+
+          const FArrayBox& phiReg = phi.getFArrayBox();
+          const FArrayBox& srcReg = src.getFArrayBox();
+
+          auto regularKernel = [&](const IntVect& iv) -> void {
+            if (ebisbox.isRegular(iv) && validCells(iv)) {
+              sumPhi += phiReg(iv, 0) * dV;
+              sumSrc += srcReg(iv, 0) * dV;
+            }
+          };
+
+          auto irregularKernel = [&](const VolIndex& vof) -> void {
+            if (ebisbox.isIrregular(vof.gridIndex()) && validCells(vof.gridIndex(), 0)) {
+              const Real kappa = ebisbox.volFrac(vof);
+
+              sumPhi += phi(vof, 0) * dV;
+              sumSrc += src(vof, 0) * dV;
+            }
+          };
+
+          VoFIterator& vofit = (*(this->m_amr)->getVofIterator(this->m_fluidRealm, this->m_plasmaPhase)[lvl])[din];
+
+          BoxLoops::loop(cellBox, regularKernel);
+          BoxLoops::loop(vofit, irregularKernel);
+        }
+      }
+    }
+  }
+
+  sumPhi = ParallelOps::sum(sumPhi);
+  sumSrc = ParallelOps::sum(sumSrc);
+
+  return std::make_pair(sumPhi, sumSrc);
 }
 
 #include <CD_NamespaceFooter.H>
