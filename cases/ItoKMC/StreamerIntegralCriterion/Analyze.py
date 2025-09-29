@@ -4,7 +4,8 @@
 """
 Extract fields from a block-wise ASCII simulation log; optionally smooth columns 3–6
 with Savitzky–Golay; compute derivatives (columns 9–10) from Q columns; optionally
-low-pass filter the derivatives; write an aligned .dat with a commented "Column" header.
+low-pass filter the derivatives; write an aligned .dat with a commented "Column" header;
+and plot columns 3–10 vs Time (column 1) in a 2x4 grid.
 
 Fields extracted per block:
   1. Time
@@ -189,7 +190,7 @@ def compute_derivative(values: List[Optional[float]],
                 return dt_val
         if prefer_dt_index is not None:
             dt_alt = dts[prefer_dt_index]
-            if dt_alt is not None and math.isfinite(dt_alt) and dt_alt > 0.0:
+            if math.isfinite(dt_alt) and dt_alt > 0.0:
                 return dt_alt
         return None
 
@@ -252,24 +253,6 @@ def lowpass_ema_bidirectional(values: List[Optional[float]],
     t = np.asarray(times, dtype=float)
     n = x.size
     y = np.full(n, np.nan, dtype=float)
-
-    # Process contiguous finite segments independently
-    def _segments_finite(xa, ta):
-        finite = np.isfinite(xa) & np.isfinite(ta)
-        segs = []
-        i = 0
-        N = len(xa)
-        while i < N:
-            if not finite[i]:
-                i += 1
-                continue
-            s = i
-            while i + 1 < N and finite[i + 1]:
-                i += 1
-            e = i
-            segs.append((s, e))
-            i += 1
-        return segs
 
     for s, e in _segments_finite(x, t):
         xs = x[s:e+1].copy()
@@ -373,11 +356,88 @@ def write_dat_aligned_with_comments(out_path: str,
         for r in formatted_rows:
             g.write(sep.join(f"{val:>{w}}" for val, w in zip(r, widths)) + "\n")
 
+    # Return arrays needed for plotting
+    return {
+        "Time": np.array(T, dtype=float),
+        "Delta E(max)": np.array(Emax_s, dtype=float),
+        "Delta E(rel)": np.array(Erel_s, dtype=float),
+        "Q (ohmic)": np.array(Qo_s, dtype=float),
+        "Q (electrode)": np.array(Qe_s, dtype=float),
+        "Sum (phi_optical)": np.array(Sphi, dtype=float),
+        "Sum (src_optical)": np.array(Ssrc, dtype=float),
+        "d/dt Q (ohmic)": np.array(dQo_dt, dtype=float),
+        "d/dt Q (electrode)": np.array(dQe_dt, dtype=float),
+    }
+
+# ---------- Plotting ----------
+def plot_2x4(time: np.ndarray, series: Dict[str, np.ndarray]) -> None:
+    """
+    Plot columns 3–10 vs Time in a 2x4 grid with same line style (no markers).
+    Y labels include units. Columns 7–8 use log-scale on Y.
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except Exception as e:
+        print(f"Warning: matplotlib not available ({e}). Skipping plots.", file=sys.stderr)
+        return
+
+    # Order and labels correspond to output columns 3..10
+    labels = [
+        "Delta E(max)",
+        "Delta E(rel)",
+        "Q (ohmic)",
+        "Q (electrode)",
+        "Sum (phi_optical)",
+        "Sum (src_optical)",
+        "d/dt Q (ohmic)",
+        "d/dt Q (electrode)",
+    ]
+
+    # Units for y-axis labels (per your specification)
+    units = {
+        "Delta E(max)": "%",
+        "Delta E(rel)": "%",
+        "Q (ohmic)": "(C",
+        "Q (electrode)": "C",
+        "Sum (phi_optical)": "1",
+        "Sum (src_optical)": "1/s",
+        "d/dt Q (ohmic)": "A",
+        "d/dt Q (electrode)": "A",
+    }
+
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8), sharex=True)
+    axes = axes.ravel()
+
+    # Same style for all — no markers
+    line_kwargs = dict(linestyle='-', linewidth=1.5)
+
+    for ax, lab in zip(axes, labels):
+        y = np.asarray(series[lab], dtype=float)
+
+        # Columns 7 & 8 (Sum ...) should be in log-scale
+        if lab in ("Sum (phi_optical)", "Sum (src_optical)"):
+            # avoid log of non-positive values
+            y_plot = np.where(y > 0, y, np.nan)
+            ax.set_yscale('log')
+        else:
+            y_plot = y
+
+        ax.plot(time, y_plot, **line_kwargs)
+        ax.set_ylabel(f"{lab} [{units[lab]}]")
+        ax.grid(True, which='both', linestyle=':', linewidth=0.5)
+
+    for ax in axes[4:]:
+        ax.set_xlabel("Time")
+
+    fig.tight_layout()
+    plt.show()
+
 # ---------- Main ----------
 def main():
     ap = argparse.ArgumentParser(
-        description="Extract, (optionally) smooth, differentiate, and (optionally) low-pass filter; write aligned .dat with commented header."
+        description="Extract, (optionally) smooth, differentiate, and (optionally) low-pass filter; write aligned .dat with commented header; then plot."
     )
+    # (1) -i no longer required; default to pout.0
     ap.add_argument("-i", "--input", help="Path to the input ASCII log file", default="pout.0")
     ap.add_argument("-o", "--output", help="Path to the output .dat file", default="pout.out")
 
@@ -397,10 +457,7 @@ def main():
         print(f"Error: input file not found: {in_path}", file=sys.stderr)
         sys.exit(1)
 
-    out_path = args.output
-    if not out_path:
-        base, _ = os.path.splitext(in_path)
-        out_path = base + ".dat"
+    out_path = args.output or "pout.out"
 
     rows = parse_file(in_path)
     if not rows:
@@ -413,7 +470,7 @@ def main():
         print("Error: --sg-order must be < --sg-window.", file=sys.stderr)
         sys.exit(1)
 
-    write_dat_aligned_with_comments(
+    series = write_dat_aligned_with_comments(
         out_path=out_path,
         rows=rows,
         use_sg=args.sg,
@@ -423,6 +480,10 @@ def main():
         lp_tau=args.lp_tau,
     )
     print(f"Wrote {len(rows)} rows to: {out_path}")
+
+    # ---- Plot at end of main ----
+    time = series["Time"]
+    plot_2x4(time, series)
 
 if __name__ == "__main__":
     main()
