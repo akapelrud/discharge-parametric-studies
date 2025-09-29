@@ -3,40 +3,22 @@
 
 """
 Extract fields from a block-wise ASCII simulation log; optionally smooth columns 3–6
-with Savitzky–Golay; compute derivatives (columns 7–8) from Q columns; optionally
+with Savitzky–Golay; compute derivatives (columns 9–10) from Q columns; optionally
 low-pass filter the derivatives; write an aligned .dat with a commented "Column" header.
 
 Fields extracted per block:
   1. Time
   2. dt
-  3. DeltaE(max)
-  4. DeltaE(rel)
-  5. Q (electrode)
-  6. Q(ohmic)
+  3. Delta E(max)
+  4. Delta E(rel)
+  5. Q (ohmic)
+  6. Q (electrode)
+  7. Sum (phi_optical)
+  8. Sum (src_optical)
 
 Derived:
-  7. d/dt Q (electrode)
-  8. d/dt Q(ohmic)
-
-Features:
-  * Optional Savitzky–Golay smoothing on columns 3–6 (before differentiation).
-  * Derivatives computed by finite differences using Time (fallback to dt).
-  * Optional low-pass (bidirectional exponential) filter on derivative columns 7–8.
-  * Fixed-width, consistently aligned columns; scientific notation with 8 decimals.
-  * Units in the input (%, (C), etc.) are ignored.
-
-Usage examples:
-  # Basic extraction (no smoothing, no low-pass):
-  python extract_timestep_data_filters.py -i pout.0 -o pout.out
-
-  # With Savitzky–Golay smoothing (columns 3–6):
-  python extract_timestep_data_filters.py -i pout.0 -o pout.out --sg --sg-window 9 --sg-order 3
-
-  # With low-pass on derivatives (columns 7–8), tau=5e-12 seconds:
-  python extract_timestep_data_filters.py -i pout.0 -o pout.out --lp --lp-tau 5e-12
-
-  # Both smoothing and low-pass:
-  python extract_timestep_data_filters.py -i pout.0 -o pout.out --sg --sg-window 11 --sg-order 3 --lp --lp-tau 1e-11
+  9.  d/dt Q (ohmic)
+ 10.  d/dt Q (electrode)
 """
 
 import argparse
@@ -53,46 +35,54 @@ def _import_savgol():
     try:
         from scipy.signal import savgol_filter
         return savgol_filter
-    except Exception as e:
+    except Exception:
         print("Error: Savitzky–Golay smoothing requested (--sg) but SciPy is not available.", file=sys.stderr)
-        print("Install SciPy or run without --sg, or let me add a NumPy-only alternative.", file=sys.stderr)
+        print("Install SciPy or run without --sg.", file=sys.stderr)
         sys.exit(1)
 
 # --------- Regex patterns ----------
 NUM = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
 
+# Keys match the log labels (with spaces exactly as in the new input)
 PATTERNS = {
     "Time": re.compile(rf'^\s*Time\s*=\s*(?P<val>{NUM})'),
     "dt": re.compile(rf'^\s*dt\s*=\s*(?P<val>{NUM})'),
-    "DeltaE(max)": re.compile(rf'^\s*Delta\s*E\(max\)\s*=\s*(?P<val>{NUM})'),
-    "DeltaE(rel)": re.compile(rf'^\s*Delta\s*E\(rel\)\s*=\s*(?P<val>{NUM})'),
-    "Q (electrode)": re.compile(rf'^\s*Q\s*\(electrode\)\s*=\s*(?P<val>{NUM})'),
-    "Q(ohmic)": re.compile(rf'^\s*Q\s*\(ohmic\)\s*=\s*(?P<val>{NUM})'),
+    "Delta E(max)": re.compile(rf'^\s*Delta\s*E\(max\)\s*=\s*(?P<val>{NUM})'),
+    "Delta E(rel)": re.compile(rf'^\s*Delta\s*E\(rel\)\s*=\s*(?P<val>{NUM})'),
+    "Q (ohmic)": re.compile(rf'^\s*Q\s*\(\s*ohmic\s*\)\s*=\s*(?P<val>{NUM})'),
+    "Q (electrode)": re.compile(rf'^\s*Q\s*\(\s*electrode\s*\)\s*=\s*(?P<val>{NUM})'),
+    "Sum (phi_optical)": re.compile(rf'^\s*Sum\s*\(\s*phi_optical\s*\)\s*=\s*(?P<val>{NUM})'),
+    "Sum (src_optical)": re.compile(rf'^\s*Sum\s*\(\s*src_optical\s*\)\s*=\s*(?P<val>{NUM})'),
 }
 
+# Output column order (matches requirements)
 FIELDS = [
     "Time",
     "dt",
-    "DeltaE(max)",
-    "DeltaE(rel)",
+    "Delta E(max)",
+    "Delta E(rel)",
+    "Q (ohmic)",
     "Q (electrode)",
-    "Q(ohmic)",
+    "Sum (phi_optical)",
+    "Sum (src_optical)",
+    "d/dt Q (ohmic)",
     "d/dt Q (electrode)",
-    "d/dt Q(ohmic)",
 ]
 
 BLOCK_START = re.compile(r'^\s*Driver::Time step report\b')
 
 COMMENT_HEADER = [
     "# Data is organized as follows:",
-    "# Column 1: Time",
-    "# Column 2: Time step (dt)",
-    "# Column 3: Delta E(max) %          (Savitzky–Golay smoothed if --sg)",
-    "# Column 4: Delta E(rel) %          (Savitzky–Golay smoothed if --sg)",
-    "# Column 5: Q (electrode)           (Savitzky–Golay smoothed if --sg)",
-    "# Column 6: Q (ohmic)               (Savitzky–Golay smoothed if --sg)",
-    "# Column 7: d/dt Q (electrode)      (from Column 5; low-pass if --lp)",
-    "# Column 8: d/dt Q (ohmic)          (from Column 6; low-pass if --lp)",
+    "# Column 1:  Time",
+    "# Column 2:  Time step (dt)",
+    "# Column 3:  Delta E(max) %          (Savitzky–Golay smoothed if --sg)",
+    "# Column 4:  Delta E(rel) %          (Savitzky–Golay smoothed if --sg)",
+    "# Column 5:  Q (ohmic)               (Savitzky–Golay smoothed if --sg)",
+    "# Column 6:  Q (electrode)           (Savitzky–Golay smoothed if --sg)",
+    "# Column 7:  Sum (phi_optical)",
+    "# Column 8:  Sum (src_optical)",
+    "# Column 9:  d/dt Q (ohmic)          (from Column 5; low-pass if --lp)",
+    "# Column 10: d/dt Q (electrode)      (from Column 6; low-pass if --lp)",
 ]
 
 # ---------- Parsing ----------
@@ -157,10 +147,7 @@ def savgol_smooth_with_nans(x: List[Optional[float]],
         return [float('nan') if not np.isfinite(v) else v for v in arr]
 
     idx = np.arange(n)
-    if n_valid < n:
-        arr_filled = np.interp(idx, idx[valid], arr[valid])
-    else:
-        arr_filled = arr
+    arr_filled = np.interp(idx, idx[valid], arr[valid]) if n_valid < n else arr
 
     savgol_filter = _import_savgol()
     try:
@@ -237,7 +224,6 @@ def compute_derivative(values: List[Optional[float]],
 
 # ---------- Low-pass filter: bidirectional exponential (handles nonuniform Δt) ----------
 def _segments_finite(x: np.ndarray, t: np.ndarray) -> List[Tuple[int, int]]:
-    """Return (start, end) inclusive indices of contiguous segments where both x and t are finite."""
     finite = np.isfinite(x) & np.isfinite(t)
     if not finite.any():
         return []
@@ -259,16 +245,7 @@ def _segments_finite(x: np.ndarray, t: np.ndarray) -> List[Tuple[int, int]]:
 def lowpass_ema_bidirectional(values: List[Optional[float]],
                               times: List[Optional[float]],
                               tau: float) -> List[float]:
-    """
-    Zero-phase (forward+backward) exponential moving average on nonuniform samples.
-    - alpha_i = 1 - exp(-Δt_i/tau) per step (uses actual time deltas).
-    - Processes each contiguous finite segment independently (does not interpolate across NaNs).
-    - For degenerate or nonpositive Δt, it resets (alpha=1) to avoid smearing across time reversals.
-
-    Returns list with NaN where input was non-finite.
-    """
     if tau is None or not math.isfinite(tau) or tau <= 0.0:
-        # No filtering
         return [float(v) if (isinstance(v, (int, float)) and math.isfinite(v)) else float('nan') for v in values]
 
     x = np.asarray(values, dtype=float)
@@ -276,8 +253,25 @@ def lowpass_ema_bidirectional(values: List[Optional[float]],
     n = x.size
     y = np.full(n, np.nan, dtype=float)
 
-    segs = _segments_finite(x, t)
-    for s, e in segs:
+    # Process contiguous finite segments independently
+    def _segments_finite(xa, ta):
+        finite = np.isfinite(xa) & np.isfinite(ta)
+        segs = []
+        i = 0
+        N = len(xa)
+        while i < N:
+            if not finite[i]:
+                i += 1
+                continue
+            s = i
+            while i + 1 < N and finite[i + 1]:
+                i += 1
+            e = i
+            segs.append((s, e))
+            i += 1
+        return segs
+
+    for s, e in _segments_finite(x, t):
         xs = x[s:e+1].copy()
         ts = t[s:e+1].copy()
         m = e - s + 1
@@ -285,30 +279,21 @@ def lowpass_ema_bidirectional(values: List[Optional[float]],
             y[s] = xs[0]
             continue
 
-        # Forward pass
         fwd = np.empty_like(xs)
         fwd[0] = xs[0]
         for i in range(1, m):
             dt = ts[i] - ts[i - 1]
-            if not math.isfinite(dt) or dt <= 0.0:
-                alpha = 1.0  # reset
-            else:
-                alpha = 1.0 - math.exp(-dt / tau)
+            alpha = 1.0 if (not math.isfinite(dt) or dt <= 0.0) else (1.0 - math.exp(-dt / tau))
             fwd[i] = (1.0 - alpha) * fwd[i - 1] + alpha * xs[i]
 
-        # Backward pass
         bwd = np.empty_like(xs)
         bwd[-1] = xs[-1]
         for i in range(m - 2, -1, -1):
             dt = ts[i + 1] - ts[i]
-            if not math.isfinite(dt) or dt <= 0.0:
-                alpha = 1.0
-            else:
-                alpha = 1.0 - math.exp(-dt / tau)
+            alpha = 1.0 if (not math.isfinite(dt) or dt <= 0.0) else (1.0 - math.exp(-dt / tau))
             bwd[i] = (1.0 - alpha) * bwd[i + 1] + alpha * xs[i]
 
-        ys = 0.5 * (fwd + bwd)
-        y[s:e+1] = ys
+        y[s:e+1] = 0.5 * (fwd + bwd)
 
     return y.tolist()
 
@@ -322,46 +307,49 @@ def write_dat_aligned_with_comments(out_path: str,
                                     lp_tau: Optional[float],
                                     col_gap: int = 2):
     # Collect raw arrays
-    T  = [rec.get("Time") for rec in rows]
-    dT = [rec.get("dt") for rec in rows]
-    Emax = [rec.get("DeltaE(max)") for rec in rows]
-    Erel = [rec.get("DeltaE(rel)") for rec in rows]
+    T   = [rec.get("Time") for rec in rows]
+    dT  = [rec.get("dt") for rec in rows]
+    Emax = [rec.get("Delta E(max)") for rec in rows]
+    Erel = [rec.get("Delta E(rel)") for rec in rows]
+    Qo   = [rec.get("Q (ohmic)") for rec in rows]
     Qe   = [rec.get("Q (electrode)") for rec in rows]
-    Qo   = [rec.get("Q(ohmic)") for rec in rows]
+    Sphi = [rec.get("Sum (phi_optical)") for rec in rows]
+    Ssrc = [rec.get("Sum (src_optical)") for rec in rows]
 
-    # Optional Savitzky–Golay smoothing on columns 3–6
+    # Optional Savitzky–Golay smoothing on columns 3–6 (E and Q only)
     if use_sg:
         Emax_s = savgol_smooth_with_nans(Emax, sg_window, sg_order)
         Erel_s = savgol_smooth_with_nans(Erel, sg_window, sg_order)
-        Qe_s   = savgol_smooth_with_nans(Qe,   sg_window, sg_order)
         Qo_s   = savgol_smooth_with_nans(Qo,   sg_window, sg_order)
+        Qe_s   = savgol_smooth_with_nans(Qe,   sg_window, sg_order)
     else:
-        Emax_s, Erel_s, Qe_s, Qo_s = Emax, Erel, Qe, Qo
+        Emax_s, Erel_s, Qo_s, Qe_s = Emax, Erel, Qo, Qe
 
-    # Derivatives from (possibly smoothed) Q values
-    dQe_dt = compute_derivative(Qe_s, T, dT)
+    # Derivatives (columns 9–10) follow the Q order: ohmic, electrode
     dQo_dt = compute_derivative(Qo_s, T, dT)
+    dQe_dt = compute_derivative(Qe_s, T, dT)
 
-    # Optional low-pass filter on derivative columns
     if use_lp:
-        dQe_dt = lowpass_ema_bidirectional(dQe_dt, T, lp_tau)
         dQo_dt = lowpass_ema_bidirectional(dQo_dt, T, lp_tau)
+        dQe_dt = lowpass_ema_bidirectional(dQe_dt, T, lp_tau)
 
-    # Compose output rows
+    # Compose output rows in the exact order of FIELDS
     rows_data: List[List[Optional[float]]] = []
-    for i, rec in enumerate(rows):
+    for i, _ in enumerate(rows):
         rows_data.append([
-            rec.get("Time"),
-            rec.get("dt"),
+            T[i],
+            dT[i],
             Emax_s[i],
             Erel_s[i],
-            Qe_s[i],
             Qo_s[i],
-            dQe_dt[i],
+            Qe_s[i],
+            Sphi[i],
+            Ssrc[i],
             dQo_dt[i],
+            dQe_dt[i],
         ])
 
-    # Format strings with scientific notation and compute widths
+    # Format and write
     formatted_rows: List[List[str]] = []
     for vals in rows_data:
         svals = []
@@ -379,11 +367,9 @@ def write_dat_aligned_with_comments(out_path: str,
 
     sep = " " * col_gap
     with open(out_path, "w", encoding="utf-8") as g:
-        # Comment header
         for line in COMMENT_HEADER:
             g.write(line + "\n")
         g.write("\n")
-        # Data rows
         for r in formatted_rows:
             g.write(sep.join(f"{val:>{w}}" for val, w in zip(r, widths)) + "\n")
 
@@ -392,7 +378,7 @@ def main():
     ap = argparse.ArgumentParser(
         description="Extract, (optionally) smooth, differentiate, and (optionally) low-pass filter; write aligned .dat with commented header."
     )
-    ap.add_argument("-i", "--input", required=True, help="Path to the input ASCII log file", default="pout.0")
+    ap.add_argument("-i", "--input", help="Path to the input ASCII log file", default="pout.0")
     ap.add_argument("-o", "--output", help="Path to the output .dat file", default="pout.out")
 
     # Savitzky–Golay options (columns 3–6)
@@ -400,8 +386,8 @@ def main():
     ap.add_argument("--sg-window", type=int, default=9, help="Savitzky–Golay window length (odd; reduced if needed)")
     ap.add_argument("--sg-order", type=int, default=3, help="Savitzky–Golay polynomial order (< window)")
 
-    # Low-pass on derivatives (columns 7–8)
-    ap.add_argument("--lp", action="store_true", help="Apply low-pass filter to derivative columns 7–8")
+    # Low-pass on derivatives (columns 9–10)
+    ap.add_argument("--lp", action="store_true", help="Apply low-pass filter to derivative columns 9–10")
     ap.add_argument("--lp-tau", type=float, default=None, help="Low-pass time constant τ (seconds) for bidirectional EMA")
 
     args = ap.parse_args()
@@ -420,7 +406,6 @@ def main():
     if not rows:
         print("Warning: no records found. Check that the input contains the expected fields.", file=sys.stderr)
 
-    # Validate options
     if args.lp and (args.lp_tau is None or not math.isfinite(args.lp_tau) or args.lp_tau <= 0.0):
         print("Error: --lp requires a positive --lp-tau (seconds).", file=sys.stderr)
         sys.exit(1)

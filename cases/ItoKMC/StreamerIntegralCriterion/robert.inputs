@@ -1,7 +1,7 @@
 # ====================================================================================================
 # Voltage curve
 # ====================================================================================================
-StreamerIntegralCriterion.potential = 50000
+StreamerIntegralCriterion.potential = 30000
 StreamerIntegralCriterion.basename  = pout
 
 # ====================================================================================================
@@ -54,7 +54,7 @@ Driver.write_restart_files             = false            ## Write restart files
 Driver.initial_regrids                 = 7                ## Number of initial regrids
 Driver.do_init_load_balance            = false            ## If true, load balance the first step in a fresh simulation.
 Driver.start_time                      = 0                ## Start time (fresh simulations only)
-Driver.stop_time                       = 5E-9             ## Stop time
+Driver.stop_time                       = 150E-9             ## Stop time
 Driver.max_steps                       = 1000             ## Maximum number of steps
 Driver.geometry_only                   = false            ## Special option that ONLY plots the geometry
 Driver.write_memory                    = false            ## Write MPI memory report
