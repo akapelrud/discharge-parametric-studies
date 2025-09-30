@@ -83,9 +83,9 @@
 	    "initial particles" : [
 		{
 		    "sphere distribution" : {
-			"center" : [ 0, 20E-3, 0 ],
-			"radius" : 2E-3,         
-			"num particles": 100,   
+			"center" : [ 0, 19E-3, 0 ],
+			"radius" : 200E-6,         
+			"num particles": 10,   
 			"weight" : 1            
 		    }
 		},
@@ -152,7 +152,14 @@
 		"type": "constant", 
 		"value": 5E-6
 	    }
-	}
+	},
+	{
+	    "id": "2PN2",
+	    "Z": 0,
+	    "solver": "cdr",
+	    "mobile": false,
+	    "diffusive": false
+	}        
     ],
     "photon species":
     [
@@ -179,7 +186,8 @@
 	    "min E/N" : 1.0,                                 
 	    "max E/N" : 10000.0,                              
 	    "num points" : 1000,                             
-	    "spacing" : "exponential"                       
+	    "spacing" : "exponential",
+	    "include_dt_calc": true            
 	},
 	{
 	    "reaction": "e + O2 -> e + e + O2+",             
@@ -192,7 +200,8 @@
 	    "min E/N" : 1.0,                                 
 	    "max E/N" : 10000.0,                              
 	    "num points" : 1000,                             
-	    "spacing" : "exponential"                       
+	    "spacing" : "exponential",
+	    "include_dt_calc": true            
 	},
 	{
 	    // Note: Strictly speaking this attaches into O-, but O- converts to O2-
@@ -206,7 +215,8 @@
 	    "min E/N" : 1.0,                     
 	    "max E/N" : 10000.0,                  
 	    "num points" : 1000,                 
-	    "spacing" : "exponential"           
+	    "spacing" : "exponential",
+	    "include_dt_calc": false            
 	},
 	{
 	    "reaction": "e + O2 + O2 -> O2- + O2", 
@@ -220,7 +230,8 @@
 	    "max E/N" : 1000.0,                  
 	    "num points" : 10000,                 
 	    "spacing" : "exponential",           
-	    "scale rate/N": 1.0E-6
+	    "scale rate/N": 1.0E-6,
+	    "include_dt_calc": false            
 	},
 	{
 	    "reaction": "O2- + @ -> e + (O2)",
@@ -233,7 +244,8 @@
 	    "min E/N" : 1.0,                     
 	    "max E/N" : 1000.0,                  
 	    "num points" : 10000,                 
-	    "spacing" : "exponential"
+	    "spacing" : "exponential",
+	    "include_dt_calc": false            
 	},		
 	{
 	    "reaction": "e + N2 -> e + Y + (N2)",    
@@ -248,8 +260,23 @@
 	    "num points" : 1000,                             
 	    "spacing" : "exponential",                       
 	    "efficiency": 0.1,                               
-	    "quenching pressure": 4000.0                     
-	}
+	    "quenching pressure": 4000.0,
+	    "include_dt_calc": false            
+	},
+	{
+	    "reaction": "e + N2 -> e + 2PN2",
+	    "description": "2PN2 excitation",
+	    "header": "C21   N2    Excitation    11.03 eV",                              
+	    "type": "table vs E/N",         
+	    "file" : "electron_transport_data.dat",
+	    "E/N column" : 0,          
+	    "rate/N column" : 1,       
+	    "min E/N" : 1.0,           
+	    "max E/N" : 10000.0,        
+	    "num points" : 1000,       
+	    "spacing" : "exponential",
+	    "include_dt_calc": false
+	}        
     ],
     "photoionization":
     [
