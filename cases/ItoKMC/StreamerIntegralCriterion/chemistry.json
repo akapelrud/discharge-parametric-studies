@@ -85,14 +85,14 @@
 		    "sphere distribution" : {
 			"center" : [ 0, 19E-3, 0 ],
 			"radius" : 200E-6,         
-			"num particles": 10,   
+			"num particles": 0,   
 			"weight" : 1            
 		    }
 		},
     {
 		    "single particle" : {
 			"position" : [ 0, 20E-3, 0 ],
-			"weight" : 10
+			"weight" : 5
 		    }
     }
 	    ]
