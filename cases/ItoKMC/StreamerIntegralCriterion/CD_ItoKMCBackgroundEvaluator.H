@@ -92,6 +92,31 @@ namespace Physics {
       Real m_relFieldChange;
 
       /*!
+        @brief Total charge on the electrode, given by \int(eps*E dA)
+      */
+      Real m_electrodeCharge;
+
+      /*!
+        @brief Total charge that left through the electrode in the last time step.
+      */
+      Real m_ohmicCharge;
+
+      /*!
+        @brief Integrated optical emissions (phi)
+      */
+      Real m_sumOpticalPhi;
+
+      /*!
+        @brief Integrated optical emissions (source term)
+      */
+      Real m_sumOpticalSrc;
+
+      /*!
+        @brief Name of the optical solver
+      */
+      std::string m_opticalSolver;
+
+      /*!
 	@brief For storing the background field.
 	@details This field is space- and surface-charge free and is filled by computeBackgroundField
       */
@@ -110,6 +135,30 @@ namespace Physics {
       [[nodiscard]]
       virtual std::pair<Real, Real>
       evaluateSpaceChargeEffects() noexcept;
+
+      /*!
+        @brief Compute total charge on electrode
+        @details This returns \int(eps * E)*dA
+      */
+      [[nodiscard]]
+      virtual Real
+      integrateElectrodeSurfaceCharge() const noexcept;
+
+      /*!
+        @brief Compute the total ohmic current through the electrode.
+        @details This returns the total charge that left the electrode in the last time step.
+      */
+      [[nodiscard]]
+      virtual Real
+      integrateOhmicCharge() const noexcept;
+
+      /*!
+        @brief Integrate the sum of the optical excitations.
+        @details This returns the sum of the emissions, and the sum of the excitations.
+      */
+      [[nodiscard]]
+      virtual std::pair<Real, Real>
+      integrateOpticalExcitations() const noexcept;
     };
   } // namespace ItoKMC
 } // namespace Physics
