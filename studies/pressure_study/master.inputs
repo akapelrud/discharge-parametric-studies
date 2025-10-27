@@ -9,6 +9,7 @@ StreamerIntegralCriterion.basename  = pout
 # ====================================================================================================
 ItoKMCBackgroundEvaluator.max_field_exit_crit = -1    ## percentage change in max field due to space charge before stopping simulation (-1: off)
 ItoKMCBackgroundEvaluator.rel_field_exit_crit = 0.25  ## percentage per cell change in field due to space charge before stopping simulation (-1: off)
+ItoKMCBackgroundEvaluator.max_initial_time_step = 1E-11  ## maximum initial timestep, capped to preventing the particles from moving to far from the initial position
 
 # ====================================================================================================
 # AmrMesh class options
@@ -236,8 +237,8 @@ ItoKMCGodunovStepper.fluid_advection_diffusion_cfl         = 0.5                
 ItoKMCGodunovStepper.relax_dt_factor                       = 100.0                ## Relaxation time step restriction.
 ItoKMCGodunovStepper.min_dt                                = 0.0                  ## Minimum permitted time step
 ItoKMCGodunovStepper.max_dt                                = 1.E99                ## Maximum permitted time step
-ItoKMCGodunovStepper.max_growth_dt                         = 1.2                ## Maximum permitted time step increase (dt * factor)
-ItoKMCGodunovStepper.max_shrink_dt                         = 1.2                ## Maximum permissible time step reduction (dt/factor)
+ItoKMCGodunovStepper.max_growth_dt                         = 1.5                ## Maximum permitted time step increase (dt * factor)
+ItoKMCGodunovStepper.max_shrink_dt                         = 1.5                ## Maximum permissible time step reduction (dt/factor)
 ItoKMCGodunovStepper.extend_conductivity                   = true                 ## Permit particles to live outside the EB to avoid bad gradients near EB
 ItoKMCGodunovStepper.smooth_conductivity                   = false                ## Use bilinear smoothing on the conductivity.
 ItoKMCGodunovStepper.cond_filter_num                       = 0                    ## Number of filterings for conductivity

@@ -82,6 +82,14 @@ namespace Physics {
       Real m_relFieldExitCrit;
 
       /*!
+        @brief Initial time step size.
+        Introduced to limit the initial particles from moving to far in the initial timestep.
+
+        Default constructed to 0.0, which indicates normal operation.
+        */
+      Real m_maxInitialTimeStep;
+
+      /*!
 	@brief Change in max field.
       */
       Real m_maxFieldChange;

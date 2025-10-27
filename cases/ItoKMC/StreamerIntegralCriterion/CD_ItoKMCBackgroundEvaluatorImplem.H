@@ -32,10 +32,12 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::ItoKMCBackgroundEvaluator(RefCountedPtr<I
   m_electrodeCharge  = 0.0;
   m_ohmicCharge      = 0.0;
   m_opticalSolver    = "2PN2";
+  m_maxInitialTimeStep  = 0.0;
 
   pp.query("max_field_exit_crit", m_maxFieldExitCrit);
   pp.query("rel_field_exit_crit", m_relFieldExitCrit);
   pp.query("optical_solver", m_opticalSolver);
+  pp.query("max_initial_time_step", m_maxInitialTimeStep);
 }
 
 template <typename I, typename C, typename R, typename F>
@@ -145,6 +147,9 @@ ItoKMCBackgroundEvaluator<I, C, R, F>::computeDt()
   else {
     newDt = ItoKMCGodunovStepper<I, C, R, F>::computeDt();
   }
+
+  if (this->m_timeStep == 0 && m_maxInitialTimeStep > 0.0 && newDt > m_maxInitialTimeStep)
+      newDt = m_maxInitialTimeStep;
 
   return newDt;
 }
