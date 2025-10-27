@@ -53,6 +53,7 @@ plasma_study_1 = {
             ],
         'required_files': [
             'master.inputs',
+            plasma_dir+'Analyze.py',
             plasma_dir+'chemistry.json',
             plasma_dir+'detachment_rate.dat',
             plasma_dir+'electron_transport_data.dat',
