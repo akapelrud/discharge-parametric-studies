@@ -53,12 +53,16 @@ if __name__ == '__main__':
 
     if not input_file:
         raise ValueError('missing *.inputs file in run directory')
-
-    # set Driver.max_steps=0 explicitly to quench a hard abort. The .inputs
-    # file is probably shared with the ItoKMC solver step of the study, so the
-    # DischargeInceptionStepper.mode = stationary is probably going to cause an
-    # error message and a hard abort/panic.
-    cmd = f"mpirun program {input_file} Random.seed={task_id:d} Driver.max_steps=0"
+    
+    # Set some inception stepper only options:
+    #   +Turn off plotting for inception stepper runs. The handling of the HDF5
+    #   output file might create a OOM crash on slurm if the number of K values
+    #   is large.
+    #   +Set Driver.max_steps=0 explicitly to quench a hard abort. The .inputs
+    #   file is probably shared with the ItoKMC solver step of the study, so
+    #   the DischargeInceptionStepper.mode = stationary is probably going to
+    #   cause an error message and a hard abort/panic.
+    cmd = f"mpirun program {input_file} Random.seed={task_id:d} Driver.max_steps=0 Driver.plot_interval=-1"
     log.info(f"cmdstr: '{cmd}'")
     p = subprocess.Popen(cmd, shell=True, executable="/bin/bash")
     while p.poll() is None:
