@@ -122,6 +122,7 @@ FieldSolverGMG.filter_rho        = 0                 # Number of filterings of s
 FieldSolverGMG.filter_potential  = 0                 # Number of filterings of potential after Poisson solve
 
 FieldSolverGMG.gmg_verbosity     = 2                 # GMG verbosity
+FieldSolverGMG.gmg_use_default_settings = true       # Use default multigrid settings or not (see documentation)
 FieldSolverGMG.gmg_pre_smooth    = 16                # Number of relaxations in downsweep
 FieldSolverGMG.gmg_post_smooth   = 16                # Number of relaxations in upsweep
 FieldSolverGMG.gmg_bott_smooth   = 16                # Number of at bottom level (before dropping to bottom solver)
@@ -139,6 +140,7 @@ FieldSolverGMG.gmg_reduce_order  = false             # If true, always use order
 FieldSolverGMG.gmg_bottom_solver = simple 64         # Bottom solver type. 'simple', 'bicgstab', or 'gmres'
 FieldSolverGMG.gmg_cycle         = vcycle            # Cycle type. Only 'vcycle' supported for now. 
 FieldSolverGMG.gmg_smoother      = red_black         # Relaxation type. 'jacobi', 'multi_color', or 'red_black'
+FieldSolverGMG.gmg_relax_factor  = 1.0               # Adjustable SOR factor
 
 
 # ====================================================================================================
