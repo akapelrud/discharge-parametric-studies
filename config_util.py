@@ -150,7 +150,8 @@ def read_input_float_field(input_file: Path, key: str):
                     s = line.split('=')
                     value = float(s[1].split('#')[0])
     finally:
-        return value
+        pass
+    return value
 
 
 def handle_input_combination(input_file, key, pspace, comb_dict):
