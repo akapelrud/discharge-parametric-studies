@@ -539,7 +539,7 @@ The script configures the resource requirements, sets error conditions and loads
 Template jobscripts
 -------------------
 
-At this stage the work is not done, because alot of of the heavy lifting has to be done by your jobscripts. Regard the *configurator.py* script as setting up the infrastructure. It is now up to you to start meaningful simulations.
+At this stage the work is not done, because alot of of the heavy lifting has to be done by your jobscripts. Regard the *configurator.py* script as setting up the infrastructure. It is now up to you to start meaningful simulations. This section gives some examples on how to accomplish this.
 
 Generic python jobscript example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -689,7 +689,6 @@ The jobscripts depend on two python scripts: ``parse_report.py`` and ``config_ut
             raise ValueError('missing *.inputs file in run directory')
 
         # We are now ready to run mpi on our chombo-discharge executable through the program symlink
-
         # If there are any quirks specific to this invocation that is not taken care of in your *.inputs file, you can add them here:
         
         cmd = f"mpirun program {input_file} Random.seed={task_id:d} SomeNamespace.variable=QuirkSolution"
@@ -881,7 +880,8 @@ This is a rather long example where we traverse the database directories to find
         if 'dummy-parameter' in parameters:
             data = some_filter_action(parameters['dummy-parameter']  #do something meaningful
 
-        # at this point we can do whatever we like with the data.
+        #----------------------------------------------------------------------------
+        # At this point we can do whatever we like with the data.
 
         # Maybe the database study gave an estimate of a parameter and we just
         # want to write that parameter to an *.inputs file or *.json file and run
@@ -894,9 +894,10 @@ This is a rather long example where we traverse the database directories to find
         # hierarchy in the run-directory and submit those simulation jobs to slurm.
 
         # We will use the generic_array_job_jobscript.py script at the leaf directory level.
+        #----------------------------------------------------------------------------
 
         # let us enumerate the interresting data, assuming some known structure:
-        #   data[i] = ["voltage", "some-other-parameter"]
+        #   data[i] corresponds to the (new) parameters ["voltage", "some-other-parameter"]
         enum_table = list(enumerate(data))
 
         output_prefix = "voltage_"
@@ -959,45 +960,21 @@ This is a rather long example where we traverse the database directories to find
             # populate values
             comb_dict = dict(
                     voltage=row[0],
-                    some_other_parameter=
-
-                    sphere_dist_props=[
-                        particle_pos,  # center position
-                        0.5*parameters['geometry_radius']  # half the tip's radius
-                        ],
-                    single_particle_position=particle_pos# center position
+                    some_other_parameter=row[1]
                     )
-            distribution_type = 'sphere distribution'
             pspace = {
                     "voltage": {
                         "target": voltage_dir/input_file,
                         "uri": "SomeNamespace.potential",
                         },
-                    "sphere_dist_props": {
+                    "some-other-parameter": {
                         "target": voltage_dir/'chemistry.json',
-                        'uri': [
-                            'plasma species',
-                            '+["id"="e"]',  # find electrons in list
-                            'initial particles',
-                            f'+["{distribution_type}"]',
-                            distribution_type,  # TODO: fix duplicity here
-                            ['center', 'radius']  # NB! two parameters
-                            ]
+                        'uri': [ ... ]  # some very complex JSON traversing uri
                         },
-                    "single_particle_position": {
-                        "target": voltage_dir/'chemistry.json',
-                        'uri': [
-                            'plasma species',
-                            '+["id"="e"]',  # find electrons in list
-                            'initial particles',
-                            f'+["single particle"]',
-                            "single particle",  # TODO: fix duplicity here
-                            'position'  # NB! two parameters
-                            ]
-                        }
                     }
             handle_combination(pspace, comb_dict)
 
+        # all voltage_* directories are now ready, and we can post a (new!) slurm array job:
         cmdstr = f'sbatch --array=0-{len(enum_table)-1} ' + \
                 f'--job-name="{structure["identifier"]}_voltage" ' + \
                 'generic_array_job.sh'
@@ -1014,6 +991,7 @@ This is a rather long example where we traverse the database directories to find
                     job_id = m.groupdict()['job_id']
 
                     array_job_id_path = Path('array_job_id')
+                    # backups for previously posted runs:
                     if array_job_id_path.is_file():
                         for i in itertools.count(start=0, step=1):
                             path_suggestion = array_job_id_path.with_suffix(f'.bak{i:d}')
@@ -1021,8 +999,9 @@ This is a rather long example where we traverse the database directories to find
                                 shutil.move(array_job_id_path, path_suggestion)
                                 break
                             if i > MAX_BACKUPS:  # simple guard
-                                raise RuntimeError('Reached 100th iteration when trying to backup array_job_id file')
+                                raise RuntimeError(f'Reached {MAX_BACKUPS}th iteration when trying to backup array_job_id file')
 
+                    # write array index file
                     with open(array_job_id_path, 'w') as job_id_file:
                         job_id_file.write(job_id)
                     log.info(f"Submitted array job (for '{structure['identifier']}" +
