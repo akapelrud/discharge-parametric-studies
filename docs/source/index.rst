@@ -208,6 +208,11 @@ Prerequisites
    :hidden:
 
 * Python >= 3.13.0
+    
+    These additional modules are required:
+
+    * numpy
+
 * Slurm, either local service/cluster or on a larger cluster
 * Recent version of python
 
