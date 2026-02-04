@@ -24,12 +24,14 @@ This page contains documentation for a collection of python and bash/slurm scrip
     .. toctree::
        :caption: Contents
 
-Introduction
-************
-.. toctree::
-   :maxdepth: 3
-   :caption: Introduction
-   :hidden:
+.. only:: html
+
+        .. toctree::
+           :maxdepth: 3
+           :caption: Contents
+
+Introduction / Usage
+********************
 
 Basic Usage
 ===========
@@ -244,16 +246,243 @@ The `configurator.py` script contains helper code to in-place manipulate both `.
 
 Defining Parameter Spaces
 -------------------------
-The actual parameter values are only specified for the top study definition. The database only specifies where changes are to be made for a given value.
 
-A parameter space (key: `parameter_space`) is defined as:
+Continuing the example from the previous section:
+
+.. code-block:: python
+    :caption: directory structure example
+
+    inception_stepper = {
+        'identifier': 'inception_stepper',
+        'output_directory': 'is_db',
+        ..
+        'parameter_space': {
+            "pressure": {
+                "target": "master.inputs",
+                "uri": "DischargeInception.pressure"
+                },
+            "geometry_radius": {
+                "target": "master.inputs",
+                "uri": "Rod.radius",
+                },
+            }
+        }
+
+    plasma_study = {
+        'identifier': 'photoion',
+        'output_directory': 'study0',
+        ...
+        'parameter_space': {
+            "geometry_radius": {
+                "database": "inception_stepper",  # database dependency
+                "target": "master.inputs",
+                "uri": "Rod.radius",
+                "values": [1e-3, 2e-3, 3e-3]
+                },
+            "pressure": {
+                "database": "inception_stepper",  # database dependency
+                "target": "chemistry.json",
+                "uri": ["gas", "law", "ideal_gas", "pressure"],
+                "values": np.arange(1e5, 11e5, 1e5).tolist()
+                },
+            "photoionization": {
+                "target": "chemistry.json",
+                "uri": [
+                    "photoionization",
+                    [
+                        '+["reaction"=<chem_react>"Y + (O2) -> e + O2+"]',  # non-optional match
+                        '*["reaction"=<chem_react>"Y + (O2) -> (null)"]'  # optional match (create-if-not-exists)
+                        ],
+                    "efficiency"
+                    ],
+                "values": [[1.0, 0.0]]  #[[float(v), float(1.0-v)] for v in np.arange(0.0, 1.0, 1.0)]
+                },
+            }
+        }
+
+    top_object = dict(
+            databases=[inception_stepper],
+            studies=[plasma_study]
+            )
+
+The actual parameter values are typically specified for the top study definition, not the databases. The database only specifies where changes are to be made for a given value.
+
+In this example there are several distinctly named parameters changing different aspects of the simulations:
+
+* ``geometry_radius``:
+
+    Marked as dependent on the database; meaning that this study will run after the database study.
+
+    .. important::
+    
+        Both the database and the study has the same ``target`` file name and ``uri`` field, namely the ``master.inputs`` chombo-discharge input file and its ``Rod.radius`` field. Note that these are now different files residing within the output directory file hierarchy.
+
+    This parameter contributes a factor 3 to the overall parameter space size.
+
+* ``pressure``:
+
+    List of values (Evaluates to ``[100000.0, 200000.0, ..., 900000.0, 1000000.0]``).
+
+    The database will write this parameter to the ``master.inputs`` file by changing the ``DischargeInception.pressure`` (uri-field) input parameter, while the study has a different target, utilizing the json-writing capabilities to change the ``pressure`` field in the json hierarchy according to the list in the uri-field.
+    
+    This parameter contributes a factor 10 to the overall parameter space size.
+    
+* ``photoionization``:
+    
+    This is the most complex parameter. It only affects the ``chemistry.json`` target in the study.
+
+    As can be seen in the uri specification the second level is a list of length 2. This means that this parameter changes two fields in ``chemistry.json`` at the same time. Similarly, the ``values`` field is a double list, where the first element of each contained list will be written to the uri of the first target field and the second element of each contained list will be written to the uri of the second target field.
+
+    This, the value ``[[1.0, 0.0]]`` is to be regarded as a scalar quantity in the parameter space, and this parameter contributes a factor 1 to the overall parameter space size (not really affecting it).
+    
+    The resulting change for the runs in `study0/run_*/chemistry.json` will be:
+
+    .. code-block::
+        :caption: "resulting chemistry.json"
+
+        {
+            ...
+            "photoionization": [
+                {
+                    "reaction": "Y + (O2) -> e + O2+",
+                    "efficiency": 1.0
+                },
+                {
+                    "reaction": "Y + (O2) -> (null)",
+                    "efficiency": 0.0
+                }
+            ],
+            ...
+        }
+
+    For the special syntax encountered see :ref:`navigating_json`.
+
+.. _navigating_json:
+
+Navigating JSON object hierarchies
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note::
+    The special syntax ``+["field-name"="search-value"]`` and ``*["field-name"="search-value"]`` is used to search a json list for an child object ``{...}`` containing a specific member ``"field-name"`` with a specific value "search-value".
+
+    * ``+[]`` requires the object with the member ``field-name`` to exist.
+    * ``*[]`` will create the object with the member ``field-name`` if it doesn't exist.
+
+.. note::
+    The special notation ``<chem_react>`` is a hint to the parser that the value searched for in this specific example should be a valid chombo-discharge chemical reaction, c.f. `"Specifying reactions" in the Plasma Model <https://chombo-discharge.github.io/chombo-discharge/Applications/CdrPlasmaModel.html?highlight=reaction#specifying-reactions>`_. The comparison of the chemical reactions between ``search-value`` and json file is thus a parsed/semantic comparison.
+
+Navigating a json object hierarchy can sometimes involve having to search through several lists down the tree:
+
+.. code-block::
+
+    {
+        "parent":{
+            "list-level-1":[
+                {
+                    "field-name-0":"value_0"
+                },
+                {
+                    "field-name-1":"value_1_0",
+                    "target-field":"dont-you-change-me!"
+                },
+                {
+                    "field-name-1":"value_1_1",
+                    "target-field":"change-me!"  # <----
+                },
+                {
+                    "field-name-2":"value_2"
+                },
+            ]
+        }
+    }
+
+In the above contrived example, we want to change the third contained object in the list; i.e. the object that has ``"field-name-1":"value_1_1"``. The required parameter space uri would be:
 
 .. code-block:: python
 
-    'parameter_space' = {
-        'target': <file-name>,
-        'uri': <file-specific-URI>
+    "uri": [
+        "parent",
+        "list-level-1",
+        '+["field-name-1"="value_1_1"]',  # this finds the object
+        "target-field"  # this is the actual target within the above object
+    ]
+
+A deeper hierarchy with two list levels to traverse:
+
+.. code-block::
+
+    {
+        "parent":{
+            "list-level-1":[
+                {
+                    "field-name-0":"value_0"
+                },
+                {
+                    "field-name-1":"value_1_0",
+                    "target-field":"dont-you-change-me!"
+                },
+                {
+                    "field-name-1":"value_1_1",
+                    "target-field":[
+                        {
+                            "search-field"="some-value",
+                            "target2-field":"don-try-to-change-me!"
+                        },
+                        {
+                            "search-field"="search-value",
+                            "target2-field":"change-me!"  # <----
+                        }
+                    ]
+                },
+                {
+                    "field-name-2":"value_2"
+                },
+            ]
+        }
     }
+
+.. code-block::
+
+    "uri": [
+        "parent",
+        "list-level-1",
+        '+["field-name-1"="value_1_1"]',  # find the right object
+        "target-field",  # alter this one
+        '+["search-field"="search-value"]',  # find the right object
+        "target2-field"  # target aquired!
+    ]
+
+The corresponding value specification for this parameter in the run_definition should be a single list: ``"values"=[new-value-0, new-value-1, ..., new-value-N]`` contributing a factor *N* to the parameter space size.
+
+Dummy parameters
+^^^^^^^^^^^^^^^^
+It is possible to pass ``dummy`` parameters as a mechanism to set options for the jobscripts. A dummy parameter doesn't have to specify a target file, only a name and ``values``-field, and optionally the ``database`` field. The parameter doesn't grow the parameter space size, and will end up in the generated ``index.json``, ``structure.json`` and ``parameters.json`` files.
+
+Say, if study's jobscript needs a configurable parameter we can use a dummy parameter to pass it:
+
+.. code-block:: python
+
+    db_study = {
+        ...
+        "parameter_space": {
+            ...  # no "K_min" parameter here
+        }
+    }
+
+    main_study = {
+        ...
+        "parameter_space": {
+            "K_min": {
+                "values": [6.0]
+                },
+        }
+    }
+
+    top_object = dict(
+            databases=[db_study],
+            studies=[main_study]
+            )
+
 
 
 Prerequisites
