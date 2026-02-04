@@ -89,21 +89,18 @@ The difference between a *database* and a *study* is mainly a semantic one; a st
 
 A database is meant to be used as a first simulation step running specific (perhaps light-weight) jobs (chombo-discharge simulations, or other software) to generate intermediate data that the main studies depend on.
 
-Each database or study step relies on running a (chombo-discharge) executable repeatedly, and often in parallel, over a defined parameter set. Ex.: if a parameter *pressure* should be varied over 5 different values, and another parameter *radius* should be varied over 3 different values, the parameter space would require 15 distinct runs.
-
-Now, the preliminary database study might only depend on the *pressure*, while the whole main study depends on both parameters. This would result in 5 jobs (submitted as parallel array job to slurm) for the database study, **followed** by 15 jobs (parallel, and depending on the success of the first database's array job) for the main study.
+Each database or study step relies on running a (chombo-discharge) executable repeatedly, and often in parallel, over a defined parameter set. Ex.: if a parameter *pressure* should be varied over 5 different values, and another parameter *radius* should be varied over 3 different values, the parameter space would require 15 distinct runs. Now, the preliminary database study might only depend on the *pressure*, while the whole main study depends on both parameters. This would result in 5 jobs (submitted as parallel array job to slurm) for the database study, **followed** by 15 jobs (parallel, and depending on the success of the first database's array job) for the main study.
 
 
 Run Definition
 ==============
 
-
 A database/study will have these configurable fields:
 
 * ``identifier``
 * ``program``, executable to run
-* ``output_directory``, relative to the cmdline output directory, i.e.  `--output-dir`
-* ``output_dir_prefix``
+* ``output_directory``, relative to the cmdline output directory, i.e.  ``--output-dir``
+* ``output_dir_prefix`` (default: ``"run_"``)
 * ``job-script``,
 * ``job_script_dependencies``
 * ``required_files``
@@ -111,7 +108,7 @@ A database/study will have these configurable fields:
 
 The difference between ``job_script_dependencies`` and ``required_files`` is that the ``required_files`` will be copied into the bottom-level directory where the program is run from, i.e. into every specific *run* directory for every invocation over the parameter space.
 
-- ``required_files`` is typically used for `*.inputs` chombo-discharge files, physical/chemical input files like `*.json` files, or other plain data files. Sometimes extra python modules or bash-scripts might be needed at the run-level, so use this field to copy those dependencies in.
+- ``required_files`` is typically used for ``*.inputs`` chombo-discharge files, physical/chemical input files like ``*.json`` files, or other plain data files. Sometimes extra python modules or bash-scripts might be needed at the run-level, so use this field to copy those dependencies in.
 - ``job_script_dependencies``, as the name implies, should point to whatever code is needed to configure and submit the actual slurm jobs.
 
 The ``configurator.py`` script will set up directory structures and copy files into place, then launch slurm array jobs over all the configured parameter space referenced in each database. Then the same is repeated for the second-level studies. These second-level slurm array jobs are made dependent on the database jobs, essentially securing that they are run in sequence.
@@ -130,6 +127,7 @@ The ``configurator.py`` script will set up directory structures and copy files i
         'job_script': 'discharge_inception_jobscript.py',
         'job_script_dependencies': [
             'generic_array_job.sh',
+            'parse_report.py',
             ...
             ],
         'required_files': [
@@ -144,7 +142,6 @@ The ``configurator.py`` script will set up directory structures and copy files i
     plasma_study = {
         'identifier': 'photoion',
         'output_directory': 'study0',
-        'output_dir_prefix': 'run_',
         'program': 'program{DIMENSIONALITY}d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex',
         'job_script': 'plasma_jobscript.py',
         'job_script_dependencies': [
@@ -168,27 +165,86 @@ The ``configurator.py`` script will set up directory structures and copy files i
             studies=[plasma_study]
             )
 
-The example above has a more realistic structure. How the parameter spaces are defined can be found in a later section. The resulting file hierarchy from this looks like
+The example above has a more realistic structure. How the parameter spaces are defined can be found in a later section.
+
+Note the use of a templated filename for the ``program`` field, where the part ``"{DIMENSIONALITY}"`` is exchanged with the dimension specified on the command line using the ``--dim`` flag.
+
+Just after issuing this command, when the first slurm job for the database named *'inception_stepper'* has just started in the subdirectory ``run_0``, the resulting file hierarchy from this could look like:
 
 .. code-block:: bash
 
     
-    $ ls -R output_directory
+    $ ls -R --file-type output-dir
     .:
-    is_db  study0
+    is_db/  study0/
 
-    ./is_db
-    jobscript_symlink  plasma_jobscript.py  generic_array_job.sh
+    ./is_db:
+    array_job_id                      jobscript_symlink@                                 run_0/
+    discharge_inception_jobscript.py  master.inputs                                      structure.json
+    generic_array_job.sh              parse_report.py                                    transport_data.txt
+    index.json                        program3d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex
+
+    ./is_db/run_0:
+    chk/    geo/           mpi/             plt/    pout.1  pout.3  program@  restart/
+    crash/  master.inputs  parameters.json  pout.0  pout.2  pout.4  regrid/   transport_data.txt
+
+    ./study0:
+    Analyze.py                   generic_array_job.sh  parse_report.py
+    array_job_id                 inception_stepper@    plasma_jobscript.py
+    chemistry.json               index.json            program3d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex
+    config_util.py               jobscript_symlink@    run_0/
+    detachment_rate.dat          json_requirement.py   structure.json
+    electron_transport_data.dat  master.inputs
+
+    ./study0/run_0:
+    Analyze.py      detachment_rate.dat          generic_array_job.sh  parameters.json
+    chemistry.json  electron_transport_data.dat  master.inputs         program@
+
+Do notice:
+
+* The rather self-explainatory named ``jobscript_symlink`` symlink pointing to the jobscripts:
+
+    .. code-block:: bash
+
+        output-dir/is_db$ readlink jobscript_symlink
+        discharge_inception_jobscript.py
+
+        output-dir/study0$ readlink jobscript_symlink
+        plasma_jobscript.py
+
+* The ``study0/inception_stepper`` symlink pointing across the file hierarchy:
+
+    .. code-block:: bash
+        
+        output-dir/study0$ readlink inception_stepper
+        ../is_db
+
+* The ``program`` symlinks in the *"run_*"* sub-directories. These point to the actual executable in their respective parent directories.
+
+    .. code-block:: bash
+
+        output-dir/is_db/run_0$ readlink program
+        ../program3d.Linux.64.mpic++.gfortran.OPTHIGH.MPI.ex
+
+* For each database/study there are certain metadata files that are generated to make it possible to programatically traverse the created file-hierarchy from within the jobscripts or from within post-simulation analysis scripts. A job-script typically receives an array job index from slurm (through the environment variable ``$SLURM_ARRAY_TASK_ID``), and must use this to find the relevant parameters, dependent databases, get structural metadata and enter its own run-subdirectory and execute code there. These files becomes especially imortant when the second-level studies have to traverse the databases' result hierarchies to retrieve and parse database results before launching their own slurm jobs.
+
+    .. note::
     
+        Sometimes, one need to manipulate simulation input files directly from the job-scripts, e.g. to change some parameter depending on a *database* result. Python utility functions are provided to manipulate configuration files on-the-fly in this intermediate step.
 
+    Generated files:
 
-For each database/study there are certain index files that created, such that one can backtrack and find the run index from a given parameter space configuration. This is important as the second-level studies might have to traverse the database result hierarchies to retrieve and parse those results before launching their own slurm jobs. Python utility functions are provided to manipulate configuration files on-the-fly in this intermediate step. More on this later.
+    * ``array_job_id`` containing a single integer; the slurm array job id for the this database/study
+    * ``index.json``, containing a mapping between specific array job indices and all parameter sets for this database/study
+    * ``structure.json`` a parsed dump of the overall structure of the database/study. This matches a parsed export of the corresponding section in the original `run_definition`. Included both for data consistency and for usage by the jobscripts to get extra metadata for setting up batch jobs.
+    * ``run_*/parameters.json`` containing the actual parameter space point for that run.
+
 
 The `configurator.py` script contains helper code to in-place manipulate both `.*inputs` files (normally used to specify chombo-discharge parameters), as well as generic structured `.json` files (e.g. used by chombo-discharge or physical/chemical data input.
 
+Defining Parameter Spaces
+-------------------------
 The actual parameter values are only specified for the top study definition. The database only specifies where changes are to be made for a given value.
-Parameter Space
----------------
 
 A parameter space (key: `parameter_space`) is defined as:
 
