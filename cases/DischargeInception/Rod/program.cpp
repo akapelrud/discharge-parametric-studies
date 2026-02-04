@@ -13,13 +13,7 @@ int
 main(int argc, char* argv[])
 {
 
-#ifdef CH_MPI
-  MPI_Init(&argc, &argv);
-#endif
-
-  // Read the input file into the ParmParse table
-  const std::string input_file = argv[1];
-  ParmParse         pp(argc - 2, argv + 2, NULL, input_file.c_str());
+  ChomboDischarge::initialize(argc, argv);
   
   ParmParse di("DischargeInception");
 
@@ -130,10 +124,7 @@ main(int argc, char* argv[])
 
   // Set up the Driver and run it
   RefCountedPtr<Driver> engine = RefCountedPtr<Driver>(new Driver(compgeom, timestepper, amr, celltagger));
-  engine->setupAndRun(input_file);
+  engine->setupAndRun();
 
-#ifdef CH_MPI
-  CH_TIMER_REPORT();
-  MPI_Finalize();
-#endif
+  ChomboDischarge::finalize();
 }

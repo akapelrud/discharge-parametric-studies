@@ -22,13 +22,7 @@ using namespace Physics::ItoKMC;
 
 int main(int argc, char* argv[]){
 
-#ifdef CH_MPI
-  MPI_Init(&argc, &argv);
-#endif
-
-  // Build class options from input script and command line options
-  const std::string input_file = argv[1];
-  ParmParse pp(argc-2, argv+2, NULL, input_file.c_str());
+  ChomboDischarge::initialize(argc, argv);
 
   // Get potential from input script 
   std::string basename; 
@@ -53,10 +47,7 @@ int main(int argc, char* argv[]){
 
   // Set up the Driver and run it
   RefCountedPtr<Driver> engine = RefCountedPtr<Driver> (new Driver(compgeom, timestepper, amr, tagger));
-  engine->setupAndRun(input_file);
+  engine->setupAndRun();
 
-#ifdef CH_MPI
-  CH_TIMER_REPORT();
-  MPI_Finalize();
-#endif
+  ChomboDischarge::finalize();
 }
