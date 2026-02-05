@@ -665,7 +665,8 @@ The jobscripts depend on two python scripts: ``parse_report.py`` and ``config_ut
         with open('index.json') as index_file:
             index_dict = json.load(index_file)
 
-        # extract the directory prefix of run directories (default is 'run_', but make no assumptions.
+        # extract the directory prefix of run directories (default is 'run_',
+        # but make no assumptions.
         job_prefix = index_dict['prefix']
 
         # find the directory corresponding to this array task id
@@ -686,8 +687,10 @@ The jobscripts depend on two python scripts: ``parse_report.py`` and ``config_ut
         if not input_file:
             raise ValueError('missing *.inputs file in run directory')
 
-        # We are now ready to run mpi on our chombo-discharge executable through the program symlink
-        # If there are any quirks specific to this invocation that is not taken care of in your *.inputs file, you can add them here:
+        # We are now ready to run mpi on our chombo-discharge executable
+        # through the program symlink If there are any quirks specific to this
+        # invocation that is not taken care of in your *.inputs file, you can add
+        # them here:
         
         cmd = f"mpirun program {input_file} Random.seed={task_id:d} SomeNamespace.variable=QuirkSolution"
         log.info(f"cmdstr: '{cmd}'")
@@ -699,7 +702,9 @@ The jobscripts depend on two python scripts: ``parse_report.py`` and ``config_ut
             sys.exit(p.returncode)
 
         # First simulation step done.
-        # We are free to do whatever is necessary here. One likely scenario is to parse some results, alter some parameters and rerun the invocation above.
+        # We are free to do whatever is necessary here. One likely scenario is
+        # to parse some results, alter some parameters and rerun the invocation
+        # above.
 
         result_fn = "result-file-name"
 
@@ -795,7 +800,8 @@ This is a rather long example where we traverse the database directories to find
         with open('structure.json') as structure_file:
             structure = json.load(structure_file)
 
-        # extract the directory prefix of run directories (default is 'run_', but make no assumptions.
+        # extract the directory prefix of run directories (default is 'run_',
+        # but make no assumptions.
         job_prefix = 'run_'
         if 'output_dir_prefix' in structure:
             job_prefix = structure['output_dir_prefix']
