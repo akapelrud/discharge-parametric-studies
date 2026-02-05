@@ -99,14 +99,14 @@ Run Definition
 
 A database/study will have these configurable fields:
 
-* ``identifier``
-* ``program``, executable to run
+* ``identifier``, unique
 * ``output_directory``, relative to the cmdline output directory, i.e.  ``--output-dir``
 * ``output_dir_prefix`` (default: ``"run_"``)
-* ``job-script``,
-* ``job_script_dependencies``
-* ``required_files``
-* ``parameter_space``, a dictionary of parameters to vary
+* ``program``, executable to run. Will be copied to output directory hierarchy.
+* ``job-script``, job script to do the heavy lifting (call mpirun / start simulation code)
+* ``job_script_dependencies``, (python) scripts and files that the job-script needs
+* ``required_files``, typical input files for the simulation, post-analysis scripts, etc.
+* ``parameter_space``, a dictionary of parameters (c.f. :ref:`param_space`)
 
 The difference between ``job_script_dependencies`` and ``required_files`` is that the ``required_files`` will be copied into the bottom-level directory where the program is run from, i.e. into every specific *run* directory for every invocation over the parameter space.
 
@@ -245,6 +245,8 @@ Do notice:
 
 
 The `configurator.py` script contains helper code to in-place manipulate both `.*inputs` files (normally used to specify chombo-discharge parameters), as well as generic structured `.json` files (e.g. used by chombo-discharge or physical/chemical data input.
+
+.. _param_space:
 
 Defining Parameter Spaces
 -------------------------
