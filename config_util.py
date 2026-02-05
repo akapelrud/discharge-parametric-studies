@@ -11,6 +11,7 @@ import fileinput
 import re
 import shutil
 import sys
+import itertools
 from pathlib import Path
 
 from json_requirement import match_requirement, match_reaction
@@ -261,6 +262,28 @@ def copy_files(log, required_files, destination, rel_path=Path('.')):
             fp = rel_path / fp
         shutil.copy(fp, destination, follow_symlinks=True)
         log.debug(f'copying in file: {file}')
+
+
+def backup_file(file_path: Path, max_backups=100):
+    if file_path.is_file():
+        for i in itertools.count(start=0, step=1):
+            path_suggestion = file_path.with_suffix(f'.bak{i:d}')
+            if not path_suggestion.is_file():
+                shutil.move(file_path, path_suggestion)
+                break
+            if i > max_backups:  # simple guard
+                raise RuntimeError(f'Reached {max_backups}th iteration when trying to backup index.json')
+
+
+def backup_dir(dir_path: Path, max_backupus=100):
+    if dir_path.is_dir():
+        for i in itertools.count(start=0, step=1):
+            path_suggestion = dir_path.with_suffix(f'.bak{i:d}')
+            if not path_suggestion.is_dir():
+                shutil.move(dir_path, path_suggestion)
+                break
+            if i > MAX_BACKUPS:  # simple guard
+                raise RuntimeError('Reached 100th iteration when trying to backup voltage directories')
 
 
 def get_output_prefix(obj):
