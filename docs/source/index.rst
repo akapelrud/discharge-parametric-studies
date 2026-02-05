@@ -553,7 +553,7 @@ Say, if study's jobscript needs a configurable parameter we can use a dummy para
 Writing Jobscripts
 ==================
 
-*configurator.py* schedules through sbatch the script ``generic_array_job.sh``. This should be added as a ``job_script_dependency``.
+*configurator.py* schedules slurm jobs through `sbatch` expecting the bash script ``generic_array_job.sh``. This should edited to suit the system configuration, and added as a ``job_script_dependency`` to the studies:
 
 .. code-block:: bash
     :caption: generic_array_job.sh
