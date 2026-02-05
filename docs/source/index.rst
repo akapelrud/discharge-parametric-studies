@@ -592,10 +592,12 @@ Writing Jobscripts
     python ./jobscript_symlink  # run python through job-script
     exit $?
 
-.. note::
-   This could have been the job-script directly, but routing through an intermediate bash-script made it easier to configure module-loading on sigma2.
-
 The script configures the resource requirements, sets error conditions and loads sigma2 system modules (c.f. `Lmod <https://lmod.readthedocs.io/en/latest/>`_).
+
+.. note::
+    It is possible to submit python scripts to sbatch directly if the python script has the correct shebang (``#! /usr/bin/env python``), the ``#SBATCH``-specific comment directives also works from a python script. Routing through an intermediate bash-script made it somewhat easier to configure module-loading on sigma2.
+
+    A simple way of having two different versions of this bash script is to just make ``generic_array_job.sh`` a symlink to a correct system-tailored version, or even copy it in similar to the way chombo-discharge deals with the library makefiles.
 
 Template jobscripts
 -------------------
