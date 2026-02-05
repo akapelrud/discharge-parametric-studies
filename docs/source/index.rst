@@ -122,6 +122,8 @@ The ``configurator.py`` script will set up directory structures and copy files i
 .. code-block:: python
     :caption: directory structure example
 
+    import numpy as np
+
     inception_stepper = {
         'identifier': 'inception_stepper',
         'output_directory': 'is_db',
@@ -250,7 +252,9 @@ Defining Parameter Spaces
 Continuing the example from the previous section:
 
 .. code-block:: python
-    :caption: directory structure example
+    :caption: directory structure example cont...
+
+    import numpy as np
 
     inception_stepper = {
         'identifier': 'inception_stepper',
