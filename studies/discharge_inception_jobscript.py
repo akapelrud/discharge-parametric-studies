@@ -17,7 +17,10 @@ import shutil
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
 from parse_report import parse_report_file  # noqa: E402
-from config_util import handle_combination, read_input_float_field
+from config_util import (  # noqa: E402
+                         get_slurm_array_task_id,
+                         handle_combination, read_input_float_field
+                         )
 
 if __name__ == '__main__':
 
@@ -29,11 +32,7 @@ if __name__ == '__main__':
     log.addHandler(sh)
     log.setLevel(logging.INFO)
 
-    S_ENV = 'SLURM_ARRAY_TASK_ID'
-    if S_ENV not in os.environ:
-        raise RuntimeError(f'${S_ENV} not found in os.environ[]. Run this'
-                           ' script through sbatch --array=... !!')
-    task_id = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    task_id = get_slurm_array_task_id()
     log.info(f'found task id: {task_id}')
 
     with open('index.json') as index_file:

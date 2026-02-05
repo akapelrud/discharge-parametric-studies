@@ -295,3 +295,11 @@ def get_output_prefix(obj):
                              f"'{odp}' is not a string'")
         output_dir_prefix = obj['output_dir_prefix']
     return output_dir_prefix
+
+
+def get_slurm_array_task_id():
+    S_ENV = 'SLURM_ARRAY_TASK_ID'
+    if S_ENV not in os.environ:
+        raise RuntimeError(f'${S_ENV} not found in os.environ[]. Run this'
+                           ' script through sbatch --array=... !!')
+    return int(os.environ['SLURM_ARRAY_TASK_ID'])

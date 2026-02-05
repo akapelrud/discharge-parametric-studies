@@ -13,6 +13,7 @@ import subprocess
 
 # local imports
 sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
+from config_util import get_slurm_array_task_id
 
 if __name__ == '__main__':
 
@@ -24,11 +25,7 @@ if __name__ == '__main__':
     log.addHandler(sh)
     log.setLevel(logging.INFO)
 
-    S_ENV = 'SLURM_ARRAY_TASK_ID'
-    if S_ENV not in os.environ:
-        raise RuntimeError(f'${S_ENV} not found in os.environ[]. Run this'
-                           ' script through sbatch --array=... !!')
-    task_id = int(os.environ['SLURM_ARRAY_TASK_ID'])
+    task_id = get_slurm_array_task_id()
     log.info(f'found task id: {task_id}')
 
     with open('index.json') as index_file:
