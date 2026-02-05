@@ -893,6 +893,8 @@ This is a rather long example where we traverse the database directories to find
         # other associated input data, then we need to create a sub-file
         # hierarchy in the run-directory and submit those simulation jobs to slurm.
 
+        # We utilize helper functions from the configurator to alleviate the burden.
+
         # We will use the generic_array_job_jobscript.py script at the leaf directory level.
         #----------------------------------------------------------------------------
 
@@ -956,7 +958,6 @@ This is a rather long example where we traverse the database directories to find
 
             # reuse the combination writing code from the configurator / config_util, by
             # building a fake combination and parameter space:
-            particle_pos = [0.0, row[2][1], 0.0]  # strip X and Z coords
             # populate values
             comb_dict = dict(
                     voltage=row[0],
@@ -967,7 +968,7 @@ This is a rather long example where we traverse the database directories to find
                         "target": voltage_dir/input_file,
                         "uri": "SomeNamespace.potential",
                         },
-                    "some-other-parameter": {
+                    "some_other_parameter": {
                         "target": voltage_dir/'chemistry.json',
                         'uri': [ ... ]  # some very complex JSON traversing uri
                         },
