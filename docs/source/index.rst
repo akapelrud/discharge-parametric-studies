@@ -342,7 +342,7 @@ In this example there are several distinctly named parameters changing different
     The resulting change for the runs in `study0/run_*/chemistry.json` will be:
 
     .. code-block::
-        :caption: "resulting chemistry.json"
+        :caption: resulting chemistry.json
 
         {
             ...
