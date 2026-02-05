@@ -1057,14 +1057,12 @@ Prerequisites
    :caption: Prerequisites
    :hidden:
 
-* Python >= 3.13.0
+* Slurm: either a local controller+node configuration or on a larger cluster
+* Python, version >= 3.13.0
 
-    - These additional modules are required:
+    *configurator.py* and assosciated helper modules relies on core python modules. Nevertheless, certain examples and analysis scripts in the code base relies on other (optional) packages:
 
-        * numpy
-
-* Slurm, either local service/cluster or on a larger cluster
-* Recent version of python
+    * numpy
 
 
 Example local installation of slurm (debian)
