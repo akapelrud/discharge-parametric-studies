@@ -366,14 +366,45 @@ In this example there are several distinctly named parameters changing different
 Navigating JSON object hierarchies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. note::
-    The special syntax ``+["field-name"="search-value"]`` and ``*["field-name"="search-value"]`` is used to search a json list for an child object ``{...}`` containing a specific member ``"field-name"`` with a specific value "search-value".
+The special syntax ``+["field-name"="search-value"]`` and ``*["field-name"="search-value"]`` is used to search a json list for an child object ``{...}`` containing a specific member ``"field-name"`` with a specific value "search-value".
 
-    * ``+[]`` requires the object with the member ``field-name`` to exist.
-    * ``*[]`` will create the object with the member ``field-name`` if it doesn't exist.
+* ``+[]`` requires the object with the member ``field-name`` to exist.
+* ``*[]`` will create the object with the member ``field-name`` if it doesn't exist.
 
 .. note::
-   If searching for an on a list where the search key itself is an JSON object, ``search-value`` can be omitted: ``+["fields-name"]``. Remember to repeat the ``fields-name`` in your uri as the next list element to select that child object if needed.
+   If searching for an object in a list where the search key itself is an JSON object, ``search-value`` can be omitted: ``+["fields-name"]``. Remember to repeat the ``fields-name`` in your uri as the next list element to select that child object if needed.
+
+.. code-block::
+
+    {
+        "parent":{
+            "list-1":[
+                {
+                    "field-name-0":"value_0"
+                },
+                {
+                    "field-name-1":{
+                        "target-field":"change-me!"
+                    }
+                },
+                {
+                    "field-name-2":"value_2"
+                },
+            ]
+        }
+    }
+
+which can be found with
+
+.. code-block:: python
+        
+    "uri" = [
+        "parent",
+        "list-1",
+        '+["field-name-1"]',  # this finds the "unnamed" container object
+        "field-name-1", # selects the object
+        "target-field"  # this is the actual target within the above object
+        ]
 
 .. note::
     The special notation ``<chem_react>`` is a hint to the parser that the value searched for in this specific example should be a valid chombo-discharge chemical reaction, c.f. `"Specifying reactions" in the Plasma Model <https://chombo-discharge.github.io/chombo-discharge/Applications/CdrPlasmaModel.html?highlight=reaction#specifying-reactions>`_. The comparison of the chemical reactions between ``search-value`` and json file is thus a parsed/semantic comparison.
@@ -394,7 +425,7 @@ Navigating a json object hierarchy can sometimes involve having to search throug
                 },
                 {
                     "field-name-1":"value_1_1",
-                    "target-field":"change-me!"  # <----
+                    "target-field":"change-me!"
                 },
                 {
                     "field-name-2":"value_2"
@@ -407,12 +438,12 @@ In the above contrived example, we want to change the third contained object in 
 
 .. code-block:: python
 
-    "uri": [
+    "uri" = [
         "parent",
         "list-level-1",
         '+["field-name-1"="value_1_1"]',  # this finds the object
         "target-field"  # this is the actual target within the above object
-    ]
+        ]
 
 A deeper hierarchy with two list levels to traverse:
 
@@ -437,7 +468,7 @@ A deeper hierarchy with two list levels to traverse:
                         },
                         {
                             "search-field"="search-value",
-                            "target2-field":"change-me!"  # <----
+                            "target2-field":"change-me!"
                         }
                     ]
                 },
@@ -450,14 +481,14 @@ A deeper hierarchy with two list levels to traverse:
 
 .. code-block::
 
-    "uri": [
+    "uri" = [
         "parent",
         "list-level-1",
         '+["field-name-1"="value_1_1"]',  # find the right object
         "target-field",  # alter this one
         '+["search-field"="search-value"]',  # find the right object
         "target2-field"  # target aquired!
-    ]
+        ]
 
 The corresponding value specification for this parameter in the run_definition should be a single list: ``"values"=[new-value-0, new-value-1, ..., new-value-N]`` contributing a factor *N* to the parameter space size.
 
