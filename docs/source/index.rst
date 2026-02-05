@@ -235,7 +235,7 @@ Do notice:
 
     .. note::
     
-        Sometimes, one need to manipulate simulation input files directly from the job-scripts, e.g. to change some parameter depending on a *database* result. Python utility functions are provided to manipulate configuration files on-the-fly in this intermediate step.
+        Sometimes, one need to manipulate simulation input files directly from the job-scripts, e.g. to change some parameter depending on a *database* result. Python utility functions are provided to manipulate configuration files on-the-fly in this intermediate step. C.f. examples in the :ref:`ex_database` for usage.
 
     Generated files:
 
@@ -251,6 +251,13 @@ The `configurator.py` script contains helper code to in-place manipulate both `.
 
 Defining Parameter Spaces
 -------------------------
+
+A parameter space is a dictionary where the uniquely named keys (also dictionaries) are the parameters. Each parameter can contain several fields:
+
+* ``database``: unique identifier referencing a database study. This specifies that this parameter is used in a database, and hence that this study depends on the referenced database
+* ``target``: the file target (either ``*.json`` or ``*.inputs`` files))
+* ``uri``: (abbr. of *Uniform Resource Identifier*); the address to the resource you want to change within the target file.
+* ``values``: ``list()``/``[]`` of values. Can be a 2nd order list (list of lists) if the uri references several uri endpoints. In that case the paramater will change two uri targets at the same time.
 
 Continuing the example from the previous section:
 
@@ -644,6 +651,8 @@ A vanilla, quite simple python-based jobscript might look like this:
             res = p.poll()
             if res is not None:
                 break
+
+.. _ex_database:
 
 Database-dependent jobscript examples
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
