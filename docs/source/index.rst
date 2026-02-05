@@ -72,7 +72,7 @@ Overall Design
 This piece of software parses a run definition dictionary/JSON structure that is comprised of *databases* and *studies*.
 
 .. code-block:: python
-   :caption: config_concept.py
+    :caption: config_concept.py
 
     db_study = {
         ...
@@ -120,7 +120,7 @@ The ``configurator.py`` script will set up directory structures and copy files i
    It is up to the `job_script` to submit the actual slurm jobs. Facilities are in place to translate a given slurm array job id/index into the correct parameter values.
 
 .. code-block:: python
-   :caption: directory structure example
+    :caption: directory structure example
 
     inception_stepper = {
         'identifier': 'inception_stepper',
@@ -495,7 +495,7 @@ Writing Jobscripts
 *configurator.py* schedules through sbatch the script ``generic_array_job.sh``. This should be added as a ``job_script_dependency``.
 
 .. code-block:: bash
-   :caption: generic_array_job.sh
+    :caption: generic_array_job.sh
 
     #!/bin/bash
     # Author André Kapelrud
@@ -547,7 +547,7 @@ Generic python jobscript example
 A vanilla, quite simple python-based jobscript might look like this:
 
 .. code-block:: python
-   :caption: generic_array_job_jobscript.py
+    :caption: generic_array_job_jobscript.py
 
     #!/usr/bin/env python
     """
@@ -620,8 +620,8 @@ The jobscripts depend on two python scripts: ``parse_report.py`` and ``config_ut
    These are not *ready-to-run*, but illustrates a concept. For specific examples see the actual source code listings of this project.
 
 .. code-block:: python
-   :caption: Example database (python) jobscript
-   :linenos:
+    :caption: Example database (python) jobscript
+    :linenos:
 
     #!/usr/bin/env python
     """
@@ -747,7 +747,7 @@ Study (database-dependent) jobscript example
 This is a rather long example where we traverse the database directories to find relevant data and then set up detailed simulations to use that data. This can be a single simulation, or a complex-subhierarchy of simulations. The last part is only pseudo-code, so the reader is advised to check out some of the checked in example studies in the main repository.
 
 .. code-block:: python
-   :linenos:
+    :linenos:
 
     #!/usr/bin/env python
     """
@@ -988,10 +988,10 @@ Prerequisites
    :hidden:
 
 * Python >= 3.13.0
-    
-    These additional modules are required:
 
-    * numpy
+    - These additional modules are required:
+
+        * numpy
 
 * Slurm, either local service/cluster or on a larger cluster
 * Recent version of python
