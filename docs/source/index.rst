@@ -171,7 +171,7 @@ The ``configurator.py`` script will set up directory structures and copy files i
 
 The example above has a more realistic structure. How the parameter spaces are defined can be found in a later section.
 
-Note the use of a templated filename for the ``program`` field, where the part ``"{DIMENSIONALITY}"`` is exchanged with the dimension specified on the command line using the ``--dim`` flag.
+Note the use of a templated filename for the ``program`` field, where the part ``"{DIMENSIONALITY}"`` is substituted with the dimension specified on the command line using the ``--dim`` flag.
 
 Just after issuing this command, when the first slurm job for the database named *'inception_stepper'* has just started in the subdirectory ``run_0``, the resulting file hierarchy from this could look like:
 
