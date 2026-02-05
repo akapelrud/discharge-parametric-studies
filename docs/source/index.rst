@@ -744,7 +744,7 @@ The jobscripts depend on two python scripts: ``parse_report.py`` and ``config_ut
 Study (database-dependent) jobscript example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is a rather long example where we traverse the database directories to find relevant data and then set up detailed simulations to use that data. This can be a single simulation, or a complex-subhierarchy of simulations. The last part is only pseudo-code, so the reader is adviced to check out some of the checked in example studies in the main repository.
+This is a rather long example where we traverse the database directories to find relevant data and then set up detailed simulations to use that data. This can be a single simulation, or a complex-subhierarchy of simulations. The last part is only pseudo-code, so the reader is advised to check out some of the checked in example studies in the main repository.
 
 .. code-block:: python
    :linenos:
