@@ -252,12 +252,28 @@ The `configurator.py` script contains helper code to in-place manipulate both `.
 Defining Parameter Spaces
 -------------------------
 
-A parameter space is a dictionary where the uniquely named keys (also dictionaries) are the parameters. Each parameter can contain several fields:
+A parameter space is a dictionary where the uniquely named keys (also dictionaries) are the parameters.
+
+.. code-block:: python
+
+   "parameter_space" = {
+            "parameter_name_0":{
+                ...
+            },
+            "another_descriptive_parameter_name":{
+                ...
+            },
+            "some_other_parameter_name":{
+                ...
+            }
+        }
+
+Each parameter can contain several fields:
 
 * ``database``: unique identifier referencing a database study. This specifies that this parameter is used in a database, and hence that this study depends on the referenced database
 * ``target``: the file target (either ``*.json`` or ``*.inputs`` files))
 * ``uri``: (abbr. of *Uniform Resource Identifier*); the address to the resource you want to change within the target file.
-* ``values``: ``list()``/``[]`` of values. Can be a 2nd order list (list of lists) if the uri references several uri endpoints. In that case the paramater will change two uri targets at the same time.
+* ``values``: ``list()``/``[]`` of values. Scalars should be written as ``[scalar-value]``. Depending on the uri, this can be a 2nd order list (list of lists) if the uri references several uri endpoints. In that case the parameter will change two or more uri targets at the same time.
 
 Continuing the example from the previous section:
 
