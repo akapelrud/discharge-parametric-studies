@@ -548,6 +548,7 @@ A vanilla, quite simple python-based jobscript might look like this:
 
 .. code-block:: python
     :caption: generic_array_job_jobscript.py
+    :linenos:
 
     #!/usr/bin/env python
     """
