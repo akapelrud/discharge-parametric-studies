@@ -750,6 +750,7 @@ Study (database-dependent) jobscript example
 This is a rather long example where we traverse the database directories to find relevant data and then set up detailed simulations to use that data. This can be a single simulation, or a complex-subhierarchy of simulations. The last part is only pseudo-code, so the reader is adviced to check out some of the checked in example studies in the main repository.
 
 .. code-block:: python
+   :linenos:
 
     #!/usr/bin/env python
     """
@@ -773,7 +774,8 @@ This is a rather long example where we traverse the database directories to find
     sys.path.append(os.getcwd())  # needed for local imports from slurm scripts
     from parse_report import parse_report_file  # noqa: E402
     from config_util import (  # noqa: E402
-                             copy_files, handle_combination,
+                             copy_files, backup_file,
+                             handle_combination,
                              DEFAULT_OUTPUT_DIR_PREFIX
                              )
 
@@ -909,14 +911,7 @@ This is a rather long example where we traverse the database directories to find
         # guard for reposting of the job
         MAX_BACKUPS = 10
         index_path = Path('index.json')
-        if index_path.is_file():
-            for i in itertools.count(start=0, step=1):
-                path_suggestion = index_path.with_suffix(f'.bak{i:d}')
-                if not path_suggestion.is_file():
-                    shutil.move(index_path, path_suggestion)
-                    break
-                if i > MAX_BACKUPS:  # simple guard
-                    raise RuntimeError(f'Reached {MAX_BACKUPS}th iteration when trying to backup index.json')
+        backup_file(index_path, max_backups=MAX_BACKUPS)
 
         # write voltage index
         with open(index_path, 'w') as voltage_index_file:
@@ -934,17 +929,8 @@ This is a rather long example where we traverse the database directories to find
         # create run directories, copy files, set voltage and parameters, etc.
         for i, row in enum_table:
             voltage_dir = Path(f'{output_prefix}{i:d}')
-
             # don't delete old invocations
-            if voltage_dir.is_dir():
-                for i in itertools.count(start=0, step=1):
-                    path_suggestion = voltage_dir.with_suffix(f'.bak{i:d}')
-                    if not path_suggestion.is_dir():
-                        shutil.move(voltage_dir, path_suggestion)
-                        break
-                    if i > MAX_BACKUPS:  # simple guard
-                        raise RuntimeError(f'Reached {MAX_BACKUPS}th iteration when trying to backup voltage directories')
-
+            backup_dir(voltage_dir, max_backups=MAX_BACKUPS)
             os.makedirs(voltage_dir, exist_ok=False)
 
             # further symlink program executable to this directory's program-symlink
@@ -993,14 +979,7 @@ This is a rather long example where we traverse the database directories to find
 
                     array_job_id_path = Path('array_job_id')
                     # backups for previously posted runs:
-                    if array_job_id_path.is_file():
-                        for i in itertools.count(start=0, step=1):
-                            path_suggestion = array_job_id_path.with_suffix(f'.bak{i:d}')
-                            if not path_suggestion.is_file():
-                                shutil.move(array_job_id_path, path_suggestion)
-                                break
-                            if i > MAX_BACKUPS:  # simple guard
-                                raise RuntimeError(f'Reached {MAX_BACKUPS}th iteration when trying to backup array_job_id file')
+                    backup_file(array_job_id_path, max_backups=MAX_BACKUPS)
 
                     # write array index file
                     with open(array_job_id_path, 'w') as job_id_file:
