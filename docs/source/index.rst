@@ -799,10 +799,6 @@ This is a rather long example where we traverse the database directories to find
         if 'output_dir_prefix' in structure:
             job_prefix = structure['output_dir_prefix']
 
-        dim = 2
-        if 'dim' in structure:
-            dim = structure['dim']
-
         dpattern = f'^({job_prefix}[0]*{task_id:d})$'  # account for possible leading zeros
         dname = [f for f in os.listdir() if (os.path.isdir(f) and re.match(dpattern, f))][0]
         log.info(f'chdir: {dname}')
