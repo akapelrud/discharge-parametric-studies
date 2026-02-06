@@ -520,7 +520,7 @@ The corresponding value specification for this parameter in the run_definition s
 
 Dummy parameters
 ^^^^^^^^^^^^^^^^
-It is possible to pass ``dummy`` parameters as a mechanism to set options for the jobscripts. A dummy parameter doesn't have to specify a target file, only a name and ``values``-field, and optionally the ``database`` field. The parameter doesn't grow the parameter space size but will end up in the generated ``index.json``, ``structure.json`` and ``parameters.json`` files.
+It is possible to pass ``dummy`` parameters as a mechanism to set options for the jobscripts. A dummy parameter doesn't have to specify a target file, only a name and ``values``-field, and optionally the ``database`` field. If the values is a single element the parameter won't grow the parameter space size, and thus not contributing to an increase in the number of slurm jobs. A dummy parameter will end up in the generated ``index.json``, ``structure.json`` and ``parameters.json`` files.
 
 Say, if study's jobscript needs a configurable parameter we can use a dummy parameter to pass it:
 
